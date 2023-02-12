@@ -5,7 +5,7 @@ data:
     image_train_path: ['./data/train/images/train2017/']
     label_train_path: ['./data/train/labels/train2017/']
     image_test_path: ['./data/test/images/test2017/']
-    label_test_path: ['./data/test/labels/test2017/n']
+    label_test_path: ['./data/test/labels/test2017/']
 
       # augmentation: copy from https://github.com/shaofengzeng/SuperPoint-Pytorch
     augmentation:
