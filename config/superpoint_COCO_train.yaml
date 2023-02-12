@@ -2,12 +2,12 @@ data:
     name: 'coco'
     resize: [240,320]
     # data path
-    image_train_path: ['./data/mg_syn_coco15e-3/images/train2017/']
-    label_train_path: ['./data/mg_syn_coco15e-3/labels/train2017/']
-    image_test_path: ['./data/mg_syn_coco15e-3/images/test2017/']
-    label_test_path: ['./data/mg_syn_coco15e-3/labels/test2017/n']
+    image_train_path: ['./data/train/images/train2017/']
+    label_train_path: ['./data/train/labels/train2017/']
+    image_test_path: ['./data/test/images/test2017/']
+    label_test_path: ['./data/test/labels/test2017/n']
 
-    # augmentation
+      # augmentation: copy from https://github.com/shaofengzeng/SuperPoint-Pytorch
     augmentation:
       photometric:
         train_enable: true
@@ -40,4 +40,44 @@ data:
             max_angle: 1.5707963 #3.1415926
             allow_artifacts: true
         valid_border_margin: 3  
+
+model:
+  name: 'superpoint'
+  using_bn: true
+  grid_size: 8 # used to divide image into 8*8 cells
+  pretrained_model: 'none' # path to the pretrained model, if exist, then train the pretrained model
+  backbone:
+    backbone_type: 'VGG'
+    # Encoder of SuperPoint
+    vgg:
+        chanels: [64,64,64,64,128,128,128,128]
+        convKernelSize: 3
+    # Detector decoder 
+    det_head:
+      feat_in_dim: 128
+
+    # Descriptor decoder
+    des_head:
+      feat_in_dim: 128
+      feat_out_dim: 256
+
+# TODO: implement scheduler
+solver:
+  grid_size: 8
+
+  # implement the loss function parameter given by paper
+  loss:
+    positive_margin: 1.0
+    negative_margin: 0.2
+    lambda_d: 0.05
+    lambda_loss: 10000
+
+  epoch: 8
+  base_lr: 0.001
+  train_batch_size: 2
+  test_batch_size: 2
+  save_dir: './export/'
+  model_name: 'superpoint'
+
+
         
