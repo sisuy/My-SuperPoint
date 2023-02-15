@@ -50,7 +50,7 @@ model:
     backbone_type: 'VGG'
     # Encoder of SuperPoint
     vgg:
-        chanels: [64,64,64,64,128,128,128,128]
+        channels: [64,64,64,64,128,128,128,128]
         convKernelSize: 3
     # Detector decoder 
     det_head:
