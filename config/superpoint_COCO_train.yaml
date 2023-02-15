@@ -80,6 +80,3 @@ solver:
   test_batch_size: 2
   save_dir: './export/'
   model_name: 'superpoint'
-
-
-        
