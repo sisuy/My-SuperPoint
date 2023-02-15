@@ -1,4 +1,5 @@
 import torch
+from utils.tensor_op import pixel_shuffle
 
 class DetectorHead(torch.nn.Module):
     def __init__(self,input_channel,grid_size,using_bn):
@@ -29,24 +30,23 @@ class DetectorHead(torch.nn.Module):
         out = self.relu(out)
         prob_map = self.BNPb(out)
 
-
         # apply softmax function
+        prob_map = prob_map[:,:-1,:,:]
         prob_map = self.softmax(prob_map)
+        prob_map = pixel_shuffle(prob_map,self.grid_size)
+
+        # TODO: we need pixel shuffle to up-sample
         return prob_map
         
 
 
 import yaml
 if __name__=='__main__':
-    PATH = './config/superpoint_COCO_train.yaml'
+    # get random tensor which is in range of (0,255)
+    ## (batch number,input channels,H,W)
+    tensor = torch.randint(0,255,(1,128,30,40),dtype=torch.float32)
 
-    # with open(PATH,'r') as file:
-    #     detConfig = yaml.safe_load(file)['model']['backbone']['det_head']
-    #     desConfig = yaml.safe_load(file)['model']['backbone']['des_head']
-
-    det_net = DetectorHead(1,8,True)
-    tensor = torch.randint(0,255,(1,1,240,320),dtype=torch.float32)
-    print(tensor)
+    det_net = DetectorHead(input_channel=128,grid_size=8,using_bn=True)
 
     out = det_net.forward(tensor)
-    print(out.shape)
+    print(out.shape) # reshaped image size: [1,1,240,320]

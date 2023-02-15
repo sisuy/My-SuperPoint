@@ -2,13 +2,13 @@ import torch
 import numpy as np
 
 class VGGBackbone(torch.nn.Module):
-    def __init__(self,config,input_chanel = 1, device = 'cpu'):
+    def __init__(self,config,input_channel = 1, device = 'cpu'):
         super(VGGBackbone,self).__init__()
         self.device = device
         channels = config['channels']
 
         self.block1_1 = torch.nn.Sequential(
-                torch.nn.Conv2d(input_chanel,channels[0],kernel_size = 3,stride = 1,padding = 1),
+                torch.nn.Conv2d(input_channel,channels[0],kernel_size = 3,stride = 1,padding = 1),
                 torch.nn.ReLU(inplace=True),
                 torch.nn.BatchNorm2d(channels[0])
                 )
@@ -70,12 +70,15 @@ class VGGBackbone(torch.nn.Module):
 
 # test
 if __name__=="__main__":
-    config = {'channels': [64,64,64,64,128,128,128,128]}
-    net = VGGBackbone(config,input_chanel = 1,device='mps')
-    torch.save(net.state_dict(),'export/superpoint.pth')
-    net.load_state_dict(torch.load('export/superpoint.pth'))
-
-    for name,parameter in net.state_dict().items():
-        print(name)
-#        print(parameter)
-    print('done')
+    t = torch.randint(0,255,(1,1,240,320),dtype=torch.float32)
+    
+    config = {'backbone_type': 'VGG',
+              'vgg': {'channels': [64, 64, 64, 64, 128, 128, 128, 128],
+                      'convKernelSize': 3},
+                      'det_head': {'feat_in_dim': 128},
+                                   'des_head': {'feat_in_dim': 128,
+                                                'feat_out_dim': 256}
+              }
+    net = VGGBackbone(config['vgg'],input_channel=1,device = 'mps')
+    out = net(t)
+    print(out.shape)
