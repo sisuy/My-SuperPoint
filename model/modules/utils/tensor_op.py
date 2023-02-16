@@ -1,29 +1,30 @@
-import torch
+import torch 
 import numpy
+
 
 # TODO: implement pixel_shuffle
 def pixel_shuffle(tensor, scale_factor):
-    """
-    Implementation of pixel shuffle using numpy
-    Parameters:
-    -----------
-    tensor: input tensor, shape is [N, C, H, W]
-    scale_factor: scale factor to up-sample tensor
-    Returns:
-    --------
-    tensor: tensor after pixel shuffle, shape is [N, C/(r*r), r*H, r*W],
-        where r refers to scale factor
-    """
-    num, ch, height, width = tensor.shape
-    assert ch % (scale_factor * scale_factor) == 0
+    num,channel,height,width = tensor.shape
 
-    new_ch = ch // (scale_factor * scale_factor)
-    new_height = height * scale_factor
-    new_width = width * scale_factor
+    # check if the scale_factor is valid
+    assert(channel%(scale_factor*scale_factor)==0)
 
-    tensor = tensor.reshape(
-        [num, new_ch, scale_factor, scale_factor, height, width])
-    # new axis: [num, new_ch, height, scale_factor, width, scale_factor]
-    tensor = tensor.permute(0, 1, 4, 2, 5, 3)
-    tensor = tensor.reshape(num, new_ch, new_height, new_width)
+    # update parameters 
+    newNum = num
+    newChannel = channel//(scale_factor*scale_factor)
+    newHeight = height*scale_factor
+    newWidth = width*scale_factor
+
+    # shuffule
+    tensor = torch.reshape(tensor,(newNum,newChannel,height,scale_factor,width,scale_factor))
+    tensor = tensor.permute(0,1,4,2,5,3)
+    tensor = torch.reshape(tensor,(newNum,newChannel,newHeight,newWidth))
     return tensor
+
+
+
+if __name__=='__main__':
+    tensor = torch.randint(0,255,(1,64,30,40),dtype=torch.float32)
+    out = pixel_shuffle(tensor,8)
+    print(tensor.shape)
+    print(out.shape)
