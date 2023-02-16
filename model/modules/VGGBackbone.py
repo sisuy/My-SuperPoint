@@ -1,38 +1,74 @@
 import torch
 import numpy as np
-from torch import nn
-# test
-
 
 class VGGBackbone(torch.nn.Module):
-    def __init__(self,config,input_channel,use_bn,device='cpu'):
+    def __init__(self,config,input_channel = 1, device = 'cpu'):
         super(VGGBackbone,self).__init__()
         self.device = device
         channels = config['channels']
-        features = []
-        self.use_bn = use_bn
-        self.input_channel = input_channel
 
-        for i, out_channels in enumerate(channels):
-            features += [
-                nn.Conv2d(self.input_channel, out_channels, kernel_size=3, stride = 1, padding=1),
-                nn.ReLU(inplace=True),
-                nn.BatchNorm2d(out_channels) if self.use_bn else nn.Identity()
-            ]
-            
-            if i == 1 or i == 3 or i == 5:
-                features.append(nn.MaxPool2d(kernel_size=2, stride=2))
+        self.block1_1 = torch.nn.Sequential(
+                torch.nn.Conv2d(input_channel,channels[0],kernel_size = 3,stride = 1,padding = 1),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.BatchNorm2d(channels[0])
+                )
 
-            self.input_channel = out_channels
+        self.block1_2 = torch.nn.Sequential(
+                torch.nn.Conv2d(channels[0],channels[1],kernel_size = 3,stride = 1,padding = 1),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.BatchNorm2d(channels[1]),
+                torch.nn.MaxPool2d(kernel_size=2,stride=2)
+                )
 
-        self.features = nn.Sequential(*features)
+        self.block2_1 = torch.nn.Sequential(
+                torch.nn.Conv2d(channels[1],channels[2],kernel_size = 3,stride = 1,padding = 1),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.BatchNorm2d(channels[2]),
+                )
 
-    def forward(self,x):
-        out = self.features(x)
+        self.block2_2 = torch.nn.Sequential(
+                torch.nn.Conv2d(channels[2],channels[3],kernel_size = 3,stride = 1,padding = 1),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.BatchNorm2d(channels[3]),
+                torch.nn.MaxPool2d(kernel_size=2,stride=2)
+                )
+
+        self.block3_1 = torch.nn.Sequential(
+                torch.nn.Conv2d(channels[3],channels[4],kernel_size = 3,stride = 1,padding = 1),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.BatchNorm2d(channels[4]),
+                )
+
+        self.block3_2 = torch.nn.Sequential(
+                torch.nn.Conv2d(channels[4],channels[5],kernel_size = 3,stride = 1,padding = 1),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.BatchNorm2d(channels[5]),
+                torch.nn.MaxPool2d(kernel_size=2,stride=2)
+                )
+
+        self.block4_1 = torch.nn.Sequential(
+                torch.nn.Conv2d(channels[5],channels[6],kernel_size = 3,stride = 1,padding = 1),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.BatchNorm2d(channels[6]),
+                )
+
+        self.block4_2 = torch.nn.Sequential(
+                torch.nn.Conv2d(channels[6],channels[7],kernel_size = 3,stride = 1,padding = 1),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.BatchNorm2d(channels[7])
+                )
+    def forward(self,input):
+        out = self.block1_1(input)
+        out = self.block1_2(out)
+        out = self.block2_1(out)
+        out = self.block2_2(out)
+        out = self.block3_1(out)
+        out = self.block3_2(out)
+        out = self.block4_1(out)
+        out = self.block4_2(out)
         return out
 
-
-
+# test
 if __name__=="__main__":
     t = torch.randint(0,255,(1,1,240,320),dtype=torch.float32)
     
@@ -43,7 +79,7 @@ if __name__=="__main__":
                                    'des_head': {'feat_in_dim': 128,
                                                 'feat_out_dim': 256}
               }
-    net = VGGBackbone(config['vgg'],input_channel=1,use_bn=True, device = 'mps')
-    print(net)
+
+    net = VGGBackbone(config['vgg'],input_channel=1,device = 'mps')
     out = net(t)
     print(out.shape)

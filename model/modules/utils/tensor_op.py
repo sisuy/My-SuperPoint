@@ -43,8 +43,6 @@ def pixel_shuffle_inv(tensor,scale_factor):
     tensor = torch.reshape(tensor,(newNum,newChannel,newHeight,newWidth))
     return tensor
 
-
-
 if __name__=='__main__':
     tensor = torch.randint(0,255,(1,64,30,40),dtype=torch.float32)
     out1 = pixel_shuffle(tensor,8)
