@@ -15,8 +15,3 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     config_file = args.config
-
-    assert(os.path.exists(config_file))
-
-
-
