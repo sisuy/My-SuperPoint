@@ -37,7 +37,7 @@ class DetectorHead(torch.nn.Module):
         prob_map = pixel_shuffle(prob_map,self.grid_size) # output size: [B,1,240,320]
         prob_map = prob_map.squeeze(dim=1)
 
-        # TODO: we need pixel shuffle to up-sample
+        # we need pixel shuffle to up-sample
         return {'logit':out,'prob':prob_map}
         
 class DescriptorHead(torch.nn.Module):
@@ -70,11 +70,13 @@ class DescriptorHead(torch.nn.Module):
         out = self.relu(out)
         desc_raw = self.BNDb(out)
 
-        # TODO: Bitcubic interpolation
+        # Bicubic interpolation
+        desc = torch.nn.functional.interpolate(desc_raw,scale_factor=self.grid_size,mode='bicubic',align_corners=False)
 
-        # TODO: L2-normalisation - Non-learned upsampling
+        # L2-normalisation - Non-learned upsampling
+        desc = torch.nn.functional.normalize(desc,p=2,dim=1) # why dim = 1?
         
-        return desc_raw
+        return {'desc_raw': desc_raw,'desc':desc}
 
 
 import yaml
@@ -108,5 +110,8 @@ if __name__=='__main__':
     detOut = det_net.forward(tensor1)
     desOut = des_net.forward(tensor2)
 
+    print('expected det output size: [1,240,320] \nexpected desc output size: [1,256,240,320]')
+
     print('detOut: {} \
-           desOut: {}'.format(detOut['prob'].shape,desOut.shape))
+           desOut: {}'.format(detOut['prob'].shape,desOut['desc'].shape))
+    print('done')
