@@ -33,6 +33,7 @@ class DetectorHead(torch.nn.Module):
         # apply softmax function
         prob_map = prob_map[:,:-1,:,:]
         prob_map = self.softmax(prob_map)
+
         prob_map = pixel_shuffle(prob_map,self.grid_size) # output size: [B,1,240,320]
         prob_map = prob_map.squeeze(dim=1)
 
@@ -74,8 +75,6 @@ class DescriptorHead(torch.nn.Module):
         # TODO: L2-normalisation - Non-learned upsampling
         
         return desc_raw
-
-
 
 
 import yaml

@@ -79,6 +79,7 @@ if __name__=="__main__":
                                    'des_head': {'feat_in_dim': 128,
                                                 'feat_out_dim': 256}
               }
+
     net = VGGBackbone(config['vgg'],input_channel=1,device = 'mps')
     out = net(t)
     print(out.shape)
