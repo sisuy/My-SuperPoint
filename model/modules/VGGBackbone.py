@@ -13,7 +13,7 @@ class VGGBackbone(torch.nn.Module):
         self.use_bn = use_bn
         self.input_channel = input_channel
 
-        for i, out_channels in enumerate(channels):
+        for i, out_channels in channels:
             features += [
                 nn.Conv2d(self.input_channel, out_channels, kernel_size=3, stride = 1, padding=1),
                 nn.ReLU(inplace=True),
