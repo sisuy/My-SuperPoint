@@ -6,7 +6,7 @@ import argparse
 
 if __name__ == '__main__':
     # solve enviroment problem
-    os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+    # os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     torch.multiprocessing.set_start_method('spawn')
 
     # import train config file 
@@ -14,4 +14,9 @@ if __name__ == '__main__':
     parser.add_argument('config')
 
     args = parser.parse_args()
-    config_file = args.config
+    PATH = args.config
+
+    with open(PATH,'r') as file:
+        config = yaml.safe_load(file)
+
+    
