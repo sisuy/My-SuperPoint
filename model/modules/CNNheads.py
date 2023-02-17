@@ -19,6 +19,9 @@ class DetectorHead(torch.nn.Module):
 
         self.softmax = torch.nn.Softmax(dim=1)
 
+        # solver
+        self.pixel_shuffle = torch.nn.PixelShuffle(upscale_factor=self.grid_size)
+
     def forward(self,input):
         # block1
         out = self.convPa(input)
@@ -34,7 +37,7 @@ class DetectorHead(torch.nn.Module):
         prob_map = prob_map[:,:-1,:,:]
         prob_map = self.softmax(prob_map)
 
-        prob_map = pixel_shuffle(prob_map,self.grid_size) # output size: [B,1,240,320]
+        prob_map =self.pixel_shuffle(prob_map) # output size: [B,1,240,320]
         prob_map = prob_map.squeeze(dim=1)
 
         # we need pixel shuffle to up-sample
@@ -59,6 +62,9 @@ class DescriptorHead(torch.nn.Module):
         self.BNDa = torch.nn.BatchNorm2d(D)
         self.BNDb = torch.nn.BatchNorm2d(256)
 
+        # up-sampler
+        self.upSampler = torch.nn.Upsample(scale_factor=self.grid_size,mode='bicubic')
+
     def forward(self,input):
         # Block1
         out = self.convDa(input)
@@ -71,7 +77,7 @@ class DescriptorHead(torch.nn.Module):
         desc_raw = self.BNDb(out)
 
         # Bicubic interpolation
-        desc = torch.nn.functional.interpolate(desc_raw,scale_factor=self.grid_size,mode='bicubic',align_corners=False)
+        desc = self.upSampler(desc_raw)
 
         # L2-normalisation - Non-learned upsampling
         desc = torch.nn.functional.normalize(desc,p=2,dim=1) # why dim = 1?

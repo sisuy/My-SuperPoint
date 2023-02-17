@@ -4,7 +4,9 @@
     * implement module[Finished]
         * VGG backbone(model/modules/VGGBackbone.py)[Finished]
         * Detector head(model/modules/CNNheads.py)[Finished]
+            * should we implement a learned up-sampling method?
         * Descriptor head(model/modules/CNNheads.py)[Finished]
+            * should we implement a learned up-sampling method?
 * Dataset part
     * customized dataset(coco.py)[Doing]
         * data argumentation and homographt adapation
