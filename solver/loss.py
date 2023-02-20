@@ -56,14 +56,12 @@ def warped_points(pixel_points,homography,device='cpu'):
 
     # Homogrous
     pixel_points = torch.cat([pixel_points,torch.ones([pixel_points.shape[0],1],device=device)],dim=1)
-    # print("Homogrous shape: {}".format(pixel_points.shape))
     pixel_points = torch.transpose(pixel_points,1,0) # [3,N]
 
     warped_points = torch.tensordot(homography,pixel_points,dims=[[2],[0]]) # [B,3,N]
 
     # normalisze: homogrous -> 2D
     warped_points = warped_points.transpose(1,2) # [B,N,3]
-    # print("warped_points reshape: {}".format(warped_points.shape))
     warped_points = warped_points[:,:,:2]/warped_points[:,:,2:] # [B,1200,2]
 
     warped_points = torch.flip(warped_points,dims=(2,))
@@ -92,29 +90,22 @@ def descriptor_loss(config,descriptor,warped_descriptor,homography,valid_mask=No
     negative_margin = config['loss']['negative_margin']
 
     pixel_coord = torch.stack(torch.meshgrid(torch.arange(Hc,device=device),torch.arange(Wc,device=device)),dim=-1) # [30,40,2]
-    print("pixel_coord shape: {}".format(pixel_coord.shape))
 
     # compute the central pixel of the coord
     pixel_coord = pixel_coord*grid_size + grid_size//2
     pixel_points = torch.reshape(pixel_coord,(-1,2))
-    print("pixel_points shape: {}".format(pixel_points.shape))
 
     warpedPixel_coord = warped_points(pixel_points,homography,device=device) # [N,2] if batch size==1, else [B,N,2]
-    # print("warped_coord shape: {}".format(warpedPixel_coord.shape))
 
     # reshape the coord tensor into the form like: [batch,Hc,Wc,1,1,2] and [batch,1,1,Hc,Wc,2]
     pixel_coord = torch.reshape(pixel_coord,[B,Hc,Wc,1,1,2])
-    # print("pixel_coord reshape: {}".format(pixel_coord.shape))
     warpedPixel_coord = torch.reshape(warpedPixel_coord,[B,1,1,Hc,Wc,2])
-    # print("warpedPixel_coord reshape: {}".format(pixel_coord.shape))
 
     # TODO: Calculate the L2 norm
     cells_distance = torch.norm(warpedPixel_coord-pixel_coord,p='fro',dim=-1)
-    print("cells distance shape: {}".format(cells_distance.shape))
     
     # Calculate s
     s = (cells_distance-(grid_size-0.5)<=0).float() # [B,Hc,Wc,Hc,Wc]
-    print("s shape: {}".format(s.shape))
 
     # descriptor reshape
     descriptor = torch.reshape(descriptor,[B,-1,Hc,Wc,1,1])
@@ -124,14 +115,11 @@ def descriptor_loss(config,descriptor,warped_descriptor,homography,valid_mask=No
     descriptor = F.normalize(descriptor,p=2,dim=1)
     warped_descriptor = F.normalize(warped_descriptor,p=2,dim=1)
 
-    print("descriptor shape: {}".format(descriptor.shape))
-    print("warped_descriptor shape: {}".format(warped_descriptor.shape))
 
     dot_product_descriptor = torch.sum(descriptor*warped_descriptor,dim=1)
     dot_product_descriptor = F.relu(dot_product_descriptor) # [B,Hc,Wc,Hc,Wc]
-    # TODO: Maybe wrong here
-    print("dot_product shape: {}".format(dot_product_descriptor.shape))
 
+    # TODO: Maybe wrong here
     # use L2 norm to get average 1/(Hc*Wc)^2
     # TODO: why p=2? why not p = 1?
     dot_product_descriptor = torch.reshape(F.normalize(
@@ -142,24 +130,20 @@ def descriptor_loss(config,descriptor,warped_descriptor,homography,valid_mask=No
                                             torch.reshape(dot_product_descriptor,[B,Hc*Wc,Hc,Wc]),
                                             p=2,
                                             dim=1),[B,Hc,Wc,Hc,Wc])
-    print("After L2 norm dot_product_descriptor: {}".format(dot_product_descriptor.shape))
     positive_dist = torch.maximum(torch.tensor(0.,device=device),positive_margin-dot_product_descriptor)
     negative_dist = torch.maximum(torch.tensor(0.,device=device),dot_product_descriptor-negative_margin)
     loss = lambda_d*s*positive_dist + (1-s)*negative_dist # [B,Hc,Wc,Hc,Wc]
-    print("loss: {}".format(loss.shape))
 
     # use mask to filter the keypoints
     # valid_mask: [B,Hc*grid_size,Wc*grid_size]
     valid_mask = torch.ones([B,Hc*grid_size,Wc*grid_sze],dtype=torch.float,device=device) if valid_mask is None else valid_mask
 
     # reshape it by using unshuffle_pixle
-    valid_mask = torch.unsqueeze(valid_mask,dim=1) # [B,1,H,W]
-    print("valid mask shape: {}".format(valid_mask.shape))
+    valid_mask = torch.unsqueeze(valid_mask,dim=1).type(torch.float32) # [B,1,H,W]
 
     unshuffler = torch.nn.PixelUnshuffle(grid_size)
     valid_mask = unshuffler(valid_mask) # [B,C,Hc,Wc]
     valid_mask = torch.prod(valid_mask,dim=1) # [B,Hc,Wc]
-    print("Shuffled valid_mask: {}".format(valid_mask.shape))
 
     # copy debug from https://github.com/shaofengzeng/SuperPoint-Pytorch/blob/master/solver/loss.py
     normalization = torch.sum(valid_mask)*(Hc*Wc)
@@ -170,7 +154,7 @@ def descriptor_loss(config,descriptor,warped_descriptor,homography,valid_mask=No
     print('positive_dist:{:.7f}, negative_dist:{:.7f}'.format(positive_sum, negative_sum))
 
     loss = lambda_loss*torch.sum(loss*valid_mask)/normalization
-    print("Final loss: {}".format(loss))
+    print("descriptor loss: {}".format(loss))
     return loss
 
 
@@ -207,12 +191,29 @@ if __name__=='__main__':
                                [0.5,0,1]]).to(device)
 
     homography2 = torch.Tensor([[1,0,0],
-                               [0.5,1,0],
-                               [0.5,0,1]]).to(device)
+                               [0.5,-2000,0],
+                               [0.5,0,-1]]).to(device)
     
     homography = torch.stack([homography1,homography2],dim=0)
     print("batch homo: {}".format(homography.shape))
 
+    # descriptor = torch.randint(-3,1,[1,65,30,40],dtype=torch.float,device=device)
+    # warped_descriptor = torch.randint(-3,1,[1,65,30,40],dtype=torch.float,device=device)
+
+    print('-----test1-----')
+    descripto1 = torch.randint(-3,1,[1,65,30,40],dtype=torch.float,device=device)
+    warped_descripto1 = torch.randint(-3,1,[1,65,30,40],dtype=torch.float,device=device)
+    loss1 = descriptor_loss(config,descripto1,warped_descripto1,homography1,valid_mask=valid_mask,device='cuda:0')
+    print("loss1: {}".format(loss1))
+    print('-----test2-----')
+
     descriptor = torch.randint(-3,1,[1,65,30,40],dtype=torch.float,device=device)
     warped_descriptor = torch.randint(-3,1,[1,65,30,40],dtype=torch.float,device=device)
-    descriptor_loss(config,descriptor,warped_descriptor,homography1,valid_mask=valid_mask,device='cuda:0')
+    loss2 = descriptor_loss(config,descriptor,warped_descriptor,homography2,valid_mask=valid_mask,device='cuda:0')
+    print("loss2: {}".format(loss2))
+    print('-----test3-----')
+
+    descriptor = torch.randint(-3,1,[1,65,30,40],dtype=torch.float,device=device)
+    warped_descriptor = torch.randint(-3,1,[1,65,30,40],dtype=torch.float,device=device)
+    loss3 = descriptor_loss(config,descriptor,warped_descriptor,homography2,valid_mask=valid_mask,device='cuda:0')
+    print("loss2: {}".format(loss3))
