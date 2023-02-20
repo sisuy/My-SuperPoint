@@ -5,9 +5,9 @@ warnings.filterwarnings("ignore")
 def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
     '''
     Parameters:
-        keypoint_map: [B,W,H]
-        logits: [B,C,W/gird_size,H/grid_size]
-        valid_mask: [B,W,H]
+        keypoint_map: [B,H,W]
+        logits: [B,C,H/gird_size,W/grid_size]
+        valid_mask: [B,H,W]
         grid_size: int(default=8)
     '''
     keypoint_map = keypoint_map.unsqueeze(dim=1) # [1, 1, 240, 320]
@@ -15,19 +15,19 @@ def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
     # pixel shuffle inverse 1 channels -> 64 channels
     pixelShuffle_inv = torch.nn.PixelUnshuffle(downscale_factor=grid_size)
     labels = pixelShuffle_inv(keypoint_map) # [1, 64, 30, 40]
-    B,C,W,H = labels.shape
+    B,C,H,W = labels.shape
 
     # add dusbin(torch.ones -> [1,1,30,40])
-    labels = torch.cat([2*labels,torch.ones([B,1,W,H],device=device)],dim=1) # [1, 65, 30, 40]
+    labels = torch.cat([2*labels,torch.ones([B,1,H,W],device=device)],dim=1) # [1, 65, 30, 40]
     labels = torch.argmax(labels + torch.zeros(labels.shape,device=device).uniform_(0,0.1),dim=1)#B*)H/grid_size)*(W/grid_size)
 
-    # generate valid_mask: [B,W,H] -> [B,W/8,/H/8]
+    # generate valid_mask: [B,H,W] -> [B,H/8,/W/8]
     if valid_mask is None:
-        valid_mask = torch.ones([B,W,H])
+        valid_mask = torch.ones([B,H,W])
 
-    valid_mask = valid_mask.unsqueeze(dim=1) # [B,1,W,H] 
-    valid_mask =  pixelShuffle_inv(valid_mask) # [B,64,W/8,H/8]
-    valid_mask = torch.prod(valid_mask,dim=1).unsqueeze(dim=1) # [B,1,W/8,H/8]
+    valid_mask = valid_mask.unsqueeze(dim=1) # [B,1,H,W] 
+    valid_mask =  pixelShuffle_inv(valid_mask) # [B,64,H/8,W/8]
+    valid_mask = torch.prod(valid_mask,dim=1).unsqueeze(dim=1) # [B,1,H/8,W/8]
 
     # use cross-entropy to get the loss
     lossFunction = torch.nn.CrossEntropyLoss(reduction='none')
@@ -74,19 +74,19 @@ def warped_points(pixel_points,homography,device='cpu'):
 def descriptor_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,device='cpu'):
     """
     Parameter:
-        descriptor: [B,C,W/8,H/8]
-        warped_descriptor: [B,C,W/8,H/8]
-        valid_mask: [B,W,H]
+        descriptor: [B,C,H/8,W/8]
+        warped_descriptor: [B,C,H/8,W/8]
+        valid_mask: [B,H,W]
         homographic: [B,3,3]
     Return:
         loss: torch.float 
     """
 
     # transform the descriptor coordinate into warped_descriptor coordinate
-    B,C,Wc,Hc = descriptor.shape
+    B,C,Hc,Wc = descriptor.shape
     grid_size = config['grid_size']
 
-    pixel_coord = torch.stack(torch.meshgrid(torch.arange(Wc,device=device),torch.arange(Hc,device=device)),dim=-1) # [30,40,2]
+    pixel_coord = torch.stack(torch.meshgrid(torch.arange(Hc,device=device),torch.arange(Wc,device=device)),dim=-1) # [30,40,2]
     print("pixel_coord shape: {}".format(pixel_coord.shape))
 
     # compute the central pixel of the coord
@@ -94,10 +94,22 @@ def descriptor_loss(config,descriptor,warped_descriptor,homography,valid_mask=No
     pixel_points = torch.reshape(pixel_coord,(-1,2))
     print("pixel_points shape: {}".format(pixel_points.shape))
 
-    warpedPixel_coord = warped_points(pixel_points,homography,device=device) # [N,2]
-    print("warped_coord : {}".format(warpedPixel_coord.shape))
+    warpedPixel_coord = warped_points(pixel_points,homography,device=device) # [N,2] if batch size==1, else [B,N,2]
+    # print("warped_coord shape: {}".format(warpedPixel_coord.shape))
 
+    # reshape the coord tensor into the form like: [batch,Hc,Wc,1,1,2] and [batch,1,1,Hc,Wc,2]
+    pixel_coord = torch.reshape(pixel_coord,[B,Hc,Wc,1,1,2])
+    # print("pixel_coord reshape: {}".format(pixel_coord.shape))
+    warpedPixel_coord = torch.reshape(warpedPixel_coord,[B,1,1,Hc,Wc,2])
+    # print("warpedPixel_coord reshape: {}".format(pixel_coord.shape))
 
+    # TODO: Calculate the L2 norm
+    cells_distance = torch.norm(warpedPixel_coord-pixel_coord,p='fro',dim=-1)
+    print("cells distance shape: {}".format(cells_distance.shape))
+    
+    # Calculate s
+    s = (cells_distance-(grid_size-0.5)<=0).float()
+    print("s: {}".format(s))
 
 
 # test
@@ -108,7 +120,7 @@ if __name__=='__main__':
     logits = torch.randint(-1,255,(1,65,30,40),dtype=torch.float,device=device)
     # generate valid mask
     valid_mask = torch.rand([1,240,320],dtype=torch.float32,device=device)
-    # valid mask shape: [B,W,H]
+    # valid mask shape: [B,H,W]
     valid_mask = torch.where(valid_mask>-1.5,
                              torch.ones_like(valid_mask),
                              torch.zeros_like(valid_mask))
@@ -143,5 +155,3 @@ if __name__=='__main__':
     descriptor = torch.rand([1,65,30,40],dtype=torch.float)
     warped_descriptor = torch.rand([1,65,30,40],dtype=torch.float)
     descriptor_loss(config,descriptor,warped_descriptor,homography1,valid_mask=valid_mask,device='cuda:0')
-
-    
