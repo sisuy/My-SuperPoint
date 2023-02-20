@@ -18,7 +18,7 @@ def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
     B,C,W,H = labels.shape
 
     # add dusbin(torch.ones -> [1,1,30,40])
-    labels = torch.cat([2*labels,torch.ones([B,1,W,H])],dim=1) # [1, 65, 30, 40]
+    labels = torch.cat([2*labels,torch.ones([B,1,W,H],device=device)],dim=1) # [1, 65, 30, 40]
     labels = torch.argmax(labels + torch.zeros(labels.shape,device=device).uniform_(0,0.1),dim=1)#B*)H/grid_size)*(W/grid_size)
 
     # generate valid_mask: [B,W,H] -> [B,W/8,/H/8]
@@ -39,7 +39,7 @@ def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
                         torch.sum(valid_mask + 1e-6,dim=(1,2)))
     return torch.mean(loss)
 
-def warped_points(pixel_points,homography):
+def warped_points(pixel_points,homography,device='cpu'):
     '''
     Parameters:
         pixel_points: [N,2]
@@ -54,7 +54,7 @@ def warped_points(pixel_points,homography):
     B = homography.shape[0]
 
     # Homogrous
-    pixel_points = torch.cat([pixel_points,torch.ones([pixel_points.shape[0],1])],dim=1)
+    pixel_points = torch.cat([pixel_points,torch.ones([pixel_points.shape[0],1],device=device)],dim=1)
     # print("Homogrous shape: {}".format(pixel_points.shape))
     pixel_points = torch.transpose(pixel_points,1,0) # [3,N]
 
@@ -86,7 +86,7 @@ def descriptor_loss(config,descriptor,warped_descriptor,homography,valid_mask=No
     B,C,Wc,Hc = descriptor.shape
     grid_size = config['grid_size']
 
-    pixel_coord = torch.stack(torch.meshgrid(torch.arange(Wc),torch.arange(Hc)),dim=-1) # [30,40,2]
+    pixel_coord = torch.stack(torch.meshgrid(torch.arange(Wc,device=device),torch.arange(Hc,device=device)),dim=-1) # [30,40,2]
     print("pixel_coord shape: {}".format(pixel_coord.shape))
 
     # compute the central pixel of the coord
@@ -94,7 +94,7 @@ def descriptor_loss(config,descriptor,warped_descriptor,homography,valid_mask=No
     pixel_points = torch.reshape(pixel_coord,(-1,2))
     print("pixel_points shape: {}".format(pixel_points.shape))
 
-    warpedPixel_coord = warped_points(pixel_points,homography) # [N,2]
+    warpedPixel_coord = warped_points(pixel_points,homography,device=device) # [N,2]
     print("warped_coord : {}".format(warpedPixel_coord.shape))
 
 
@@ -102,17 +102,18 @@ def descriptor_loss(config,descriptor,warped_descriptor,homography,valid_mask=No
 
 # test
 if __name__=='__main__':
+    device = 'cuda:0'
     # generate random keypoint map and pred result
-    keypoint_map = torch.randint(-1,255,(1,240,320),dtype=torch.float)
-    logits = torch.randint(-1,255,(1,65,30,40),dtype=torch.float)
+    keypoint_map = torch.randint(-1,255,(1,240,320),dtype=torch.float,device=device)
+    logits = torch.randint(-1,255,(1,65,30,40),dtype=torch.float,device=device)
     # generate valid mask
-    valid_mask = torch.rand([1,240,320],dtype=torch.float32)
+    valid_mask = torch.rand([1,240,320],dtype=torch.float32,device=device)
     # valid mask shape: [B,W,H]
     valid_mask = torch.where(valid_mask>-1.5,
                              torch.ones_like(valid_mask),
                              torch.zeros_like(valid_mask))
 
-    loss = det_loss(keypoint_map,logits,8,valid_mask,device = 'cpu')
+    loss = det_loss(keypoint_map,logits,8,valid_mask,device = 'cuda:0')
     print("Detector loss: {}".format(loss))
 
     # Test for descriptor loss	
@@ -129,11 +130,11 @@ if __name__=='__main__':
 				'model_name': 'superpoint'}
     homography1 = torch.Tensor([[1,0,0],
                                [0.5,1,0],
-                               [0.5,0,1]])
+                               [0.5,0,1]]).to(device)
 
     homography2 = torch.Tensor([[1,0,0],
                                [0.5,1,0],
-                               [0.5,0,1]])
+                               [0.5,0,1]]).to(device)
     
     homography = torch.stack([homography1,homography2],dim=0)
     print("batch homo: {}".format(homography.shape))
@@ -141,6 +142,6 @@ if __name__=='__main__':
 
     descriptor = torch.rand([1,65,30,40],dtype=torch.float)
     warped_descriptor = torch.rand([1,65,30,40],dtype=torch.float)
-    descriptor_loss(config,descriptor,warped_descriptor,homography1,valid_mask=valid_mask,device='cpu')
+    descriptor_loss(config,descriptor,warped_descriptor,homography1,valid_mask=valid_mask,device='cuda:0')
 
     
