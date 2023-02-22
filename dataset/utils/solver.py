@@ -68,14 +68,17 @@ def erosion2d(image,radius=0,border_value=1e6,device='cpu'):
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(radius*2,)*2)
     kernel = torch.as_tensor(kernel[np.newaxis,:,:],device=device,dtype=torch.float) # [1,Hs,Ws]
     C,Hs,Ws = kernel.shape
+
+    # flip
+    kernel = torch.flip(kernel,dims=[1,2])
     
-    # TODO: get the centre of the kernel
+    # get the centre of the kernel
     origin = ((Hs-1)//2,(Ws-1)//2)
 
     # padding
     img_pad = F.pad(image,[origin[0],kernel.shape[1]-origin[0]-1,origin[1],kernel.shape[2]-origin[1]-1],mode='constant',value=border_value)
 
-    # TODO: unfold the image
+    # unfold the image
     img_unfold = F.unfold(img_pad,kernel_size=[Hs,Ws]) # [B,Hs*Ws,P]
 
     # strel [B,Hs*Ws] -> [B,Hs*Ws,1]
@@ -83,7 +86,7 @@ def erosion2d(image,radius=0,border_value=1e6,device='cpu'):
     strel_flatten = strel_flatten.unsqueeze(dim=-1) # [B,Hs*Ws,1]
 
 
-    # TODO: select the minimum value as the central pixel in a patch
+    # select the minimum value as the central pixel in a patch
     diff = img_unfold - strel_flatten # get the diffenreces between img_unfold and strel_element
     diff,_ = torch.min(diff,dim=1) # [1,Hs*Ws]
     
