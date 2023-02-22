@@ -6,7 +6,9 @@ import numpy as np
 from scipy.stats import truncnorm
 from numpy.random import uniform
 import kornia
-from utils.solver import dict_update,erosion2d,warped_points
+from utils.solver import dict_update,erosion2d,warped_points,filter_points
+from utils.keypoint_op import compute_keypoint_map
+
 
 def homographic_aug_pipline(img, pts, config, device='cpu'):
     """
@@ -22,7 +24,18 @@ def homographic_aug_pipline(img, pts, config, device='cpu'):
     
     # get warped_img from homography
     warped_img = kornia.warp_perspective(img,homography,img_shape,align_corners=True) # [B,1,H,W]
-    valid_mask = compute_valid_mask(img_shape,homography,erosion_radius=config['valid_border_margin'],device=device)
+    valid_mask = compute_valid_mask(img_shape,homography,erosion_radius=config['valid_border_margin'],device=device) # [B,H,W]
+
+    # get warped_points
+    warped_pts = warped_points(pts,homography,device=device)
+    warped_pts = filter_points(warped_pts,img_shape,device=device) # [N,2]
+    warped_pts_map = compute_keypoint_map(warped_pts,[img_shape[0],img_shape[1]],device=device) # [H,W]
+
+    return {'warp':{'img':warped_img.squeeze(),     # [H,W]
+                    'kpts':warped_pts,              # [N,2]
+                    'kpts_map':warped_pts_map,      # [H,W]
+                    'mask':valid_mask.squeeze()},   # [H,W]
+            'homography':homography.squeeze(),}     # [3,3]
 
 
 def compute_valid_mask(img_shape, homography, erosion_radius=0, device='cpu'):
@@ -45,10 +58,8 @@ def compute_valid_mask(img_shape, homography, erosion_radius=0, device='cpu'):
     # erosion
     if erosion_radius>0:
         mask = erosion2d(mask,erosion_radius,device=device) + 1 # [B,1,H,W]
-        print("mask shape: {}".format(torch.sum(mask)))
-
-
-
+    mask = mask.squeeze(dim=1) # [B,H,W]
+    return mask
 
 
 # copied from https://github.com/shaofengzeng/SuperPoint-Pytorch/blob/6e5c6587311cd4f98f9a5b61e84731555778c958/dataset/utils/homographic_augmentation.py
