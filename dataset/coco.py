@@ -87,23 +87,23 @@ class COCODataset(torch.utils.data.Dataset):
 
         # Homography adaptation
         if homo_enable == True and data['raw']['kpts'] is not None:
-            data_homo = homographic_aug_pipline(data['warp'['img']],
+            data_homo = homographic_aug_pipline(data['warp']['img'],
                                                 data['warp']['kpts'],
                                                 self.config['augmentation']['homographic'],
-                                                device=device)
+                                                device=self.device)
 
 
 
 # test dataset
 if __name__=="__main__":
     is_train = True
-    device = 'mps'
+    device = 'cuda:0'
     config = {'name': 'coco',
               'resize': [240, 320],
-              'image_train_path': ['../data/images/train2017/'],
-              'label_train_path': ['../data/labels/train2017/'],
-              'image_test_path': ['../data/images/test2017/'],
-              'label_test_path': ['../data/labels/test2017/'],
+              'image_train_path': ['./data/images/train2017/'],
+              'label_train_path': ['./data/labels/train2017/'],
+              'image_test_path': ['./data/images/test2017/'],
+              'label_test_path': ['./data/labels/test2017/'],
               'augmentation': {'photometric': {'train_enable': True, 'test_enable': True,
                                                'primitives': ['random_brightness',
                                                               'random_contrast',

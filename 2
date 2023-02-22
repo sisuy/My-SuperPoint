@@ -6,7 +6,7 @@ import numpy as np
 from scipy.stats import truncnorm
 from numpy.random import uniform
 import kornia
-from utils.solver import dict_update,erosion2d,warped_points
+import torch.nn.functional as F
 
 def homographic_aug_pipline(img, pts, config, device='cpu'):
     """
@@ -18,45 +18,35 @@ def homographic_aug_pipline(img, pts, config, device='cpu'):
     if len(img.shape)==2:
         img = img.unsqueeze(dim=0).unsqueeze(dim=0) # [1,1,H,W]
     img_shape = img.shape[2:] # [H,W]
-    homography = sample_homography(shape=img_shape,config=config['params'],device=device) # [B,3,3]
+    homography = sample_homography(shape=img_shape,config=config['params'],device=device)
     
     # get warped_img from homography
     warped_img = kornia.warp_perspective(img,homography,img_shape,align_corners=True) # [B,1,H,W]
-    valid_mask = compute_valid_mask(img_shape,homography,erosion_radius=config['valid_border_margin'],device=device)
 
+def compute_valid_mask(image_shape, homographies, erosion_radius=0, device='cpu'):
+    if len(homographies.shape)==2:
+        homographies = homographies.unsqueeze(0)
+    B = homographies.shape[0]
+    img_one = torch.ones(tuple([B,1,*image_shape]),device=device, dtype=torch.float32) # [B,C,H,W]
+    mask = kornia.warp_perspective(img_one, homographies, tuple(image_shape), align_corners=True)
+    mask = mask.round() # [B,1,H,W]
+    #mask = cv2.warpPerspective(np.ones(image_shape), homography, dsize=tuple(image_shape[::-1]))#dsize=tuple([w,h])
+    if erosion_radius > 0:
+        # TODO: validation & debug
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (erosion_radius*2,)*2)
+        kernel = torch.as_tensor(kernel[np.newaxis,:,:],device=device)
+        _, kH, kW = kernel.shape
+        origin = ((kH-1)//2, (kW-1)//2)
+        mask = erosion2d(mask, torch.flip(kernel, dims=[1,2]), origin=origin) + 1.# flip kernel so perform as tf.nn.erosion2d
 
-def compute_valid_mask(img_shape, homography, erosion_radius=0, device='cpu'):
-    """
-    params image_shape = [H,W]
-    params homography shape = [B,3,3]
-    return valid_mask []
-    """
-    
-    # homography [H,W] -> [B,H,W]
-    if len(homography.shape)==2:
-        homography = homography.unsqueeze(dim=0)
-    B = homography.shape[0] 
-    
-    # extract valid mask from homography
-    img_one = torch.ones([B,1,img_shape[0],img_shape[1]],device=device,dtype=torch.float) # [B,1,H,W]
-    mask = kornia.warp_perspective(img_one,homography,tuple(img_shape),align_corners=True) # [B,1,H,W]
-    mask = mask.round()
-
-    # erosion
-    if erosion_radius>0:
-        mask = erosion2d(mask,erosion_radius,device=device) + 1 # [B,1,H,W]
-        print("mask shape: {}".format(torch.sum(mask)))
-
-
-
-
+    return mask.squeeze(dim=1)#BHW
 
 # copied from https://github.com/shaofengzeng/SuperPoint-Pytorch/blob/6e5c6587311cd4f98f9a5b61e84731555778c958/dataset/utils/homographic_augmentation.py
 def sample_homography(shape, config=None, device='cpu'):
     default_config = {'perspective':True, 'scaling':True, 'rotation':True, 'translation':True,
     'n_scales':5, 'n_angles':25, 'scaling_amplitude':0.2, 'perspective_amplitude_x':0.1,
     'perspective_amplitude_y':0.1, 'patch_ratio':0.5, 'max_angle':pi/2,
-                      'allow_artifacts': False, 'translation_overflow': 0.,'valid_border_margin':0}
+    'allow_artifacts': False, 'translation_overflow': 0.}
 
     #TODO: not tested
     if config is not None:
@@ -154,5 +144,32 @@ def sample_homography(shape, config=None, device='cpu'):
     # apply inverse operation,like this
     #homography = np.linalg.inv(homography)
     homography = torch.inverse(homography)#inverse here to be consistent with tf version
+    #debug
+    #homography = torch.eye(3,device=device).unsqueeze(dim=0)
     return homography#[1,3,3]
 
+# solver function
+def dict_update(d, u):
+    """Improved update for nested dictionaries.
+    Arguments:
+        d: The dictionary to be updated.
+        u: The update dictionary.
+    Returns:
+        The updated dictionary.
+    """
+    for k, v in u.items():
+        if isinstance(v, collections.Mapping):
+            d[k] = dict_update(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
+
+def erosion2d(image,strel,origin=(0,0),boader_value=1e6):
+    image_pad = F.pad(image, [origin[0], strel.shape[1]-origin[0]-1, origin[1], strel.shape[2]-origin[1]-1], mode='constant', value=border_value)
+    image_unfold = F.unfold(image_pad, kernel_size=strel.shape[1])#[B,C*sH*sW,L],L is the number of patches
+    strel_flatten = torch.flatten(strel,start_dim=1).unsqueeze(-1)
+    diff = image_unfold - strel_flatten
+    # Take maximum over the neighborhood
+    result, _ = diff.min(dim=1)
+    # Reshape the image to recover initial shape
+    return torch.reshape(result, image.shape)
