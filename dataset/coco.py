@@ -25,7 +25,6 @@ class COCODataset(torch.utils.data.Dataset):
             print("COCO dataset size: {}".format(len(self.samples)))
         else:
             self.samples = self._init_data(config['image_test_path'],config['label_test_path'])
-        self.__getitem__(0)
 
     # need to be implemented this function, nessearry for customized dataset
     ## load data into a list, use index to get the image and label of the sample image
@@ -91,6 +90,20 @@ class COCODataset(torch.utils.data.Dataset):
                                                 data['warp']['kpts'],
                                                 self.config['augmentation']['homographic'],
                                                 device=self.device)
+            data.update(data_homo)
+
+        # photo argumentor
+        if photo_enable:
+            photo_img = data['warp']['img'].cpu().numpy().round().astype(np.uint8)
+            photo_img = self.photo_augmentor(photo_img)
+            data['warp']['img'] = torch.as_tensor(photo_img,dtype=torch.float,device=self.device)
+
+        # normalize
+        data['raw']['img'] = data['raw']['img']/255
+        data['warp']['img'] = data['warp']['img']/255
+
+        return data
+
 
 
 
