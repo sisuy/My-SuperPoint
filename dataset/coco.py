@@ -104,13 +104,32 @@ class COCODataset(torch.utils.data.Dataset):
 
         return data
 
+    def batch_collator(self,samples):
+        """
+        batch_size = len(samples) 
+        params samples(list): each elements correspond to a data
+            the data structure: 'raw': 
+                                    'img': [H,W]
+                                    'kpts': [N,2]
+                                    'kpts_map': [H,W]
+                                    'mask': [H,W]
+                                'warp':
+                                    'img': [H,W]
+                                    'kpts': [N,2]
+                                    'kpts_map': [H,W]
+                                    'mask': [H,W]
+                                'homography':
+                                    tensor: 3*3 
 
+        """
+        pass
 
 
 # test dataset
 if __name__=="__main__":
     is_train = True
     device = 'cuda:0'
+    batch_size = 1
     config = {'name': 'coco',
               'resize': [240, 320],
               'image_train_path': ['./data/images/train2017/'],
@@ -147,4 +166,12 @@ if __name__=="__main__":
                                                'valid_border_margin': 3}}}
     dataset = COCODataset(config,is_train,device=device)
     # print("config: {}".format(config))
-    
+    dataloader = torch.utils.data.DataLoader(dataset,
+                                             batch_size=2,
+                                             shuffle=False,
+                                             collate_fn=dataset.batch_collator)
+    for i,d in enumerate(dataloader):
+        if i > 2:
+            break
+        print(d)
+        
