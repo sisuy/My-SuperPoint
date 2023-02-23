@@ -34,6 +34,7 @@ def warped_points(pixel_points,homography,device='cpu'):
     
     B = homography.shape[0]
 
+    pixel_points = torch.fliplr(pixel_points)
     # Homogrous
     pixel_points = torch.cat([pixel_points,torch.ones([pixel_points.shape[0],1],device=device)],dim=1)
     pixel_points = torch.transpose(pixel_points,1,0) # [3,N]

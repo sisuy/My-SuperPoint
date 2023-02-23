@@ -163,7 +163,7 @@ def sample_homography(shape, config=None, device='cpu'):
     # since if we use homography directly ofr opencv function, for example warpPerspective
     # the result we get is different from tf version. In order to get a same result, we have to
     # apply inverse operation,like this
-    #homography = np.linalg.inv(homography)
+    # homography = np.linalg.inv(homography)
     homography = torch.inverse(homography)#inverse here to be consistent with tf version
     return homography#[1,3,3]
 
