@@ -10,29 +10,57 @@ import warnings
 from solver.loss import loss_fn
 warnings.filterwarnings("ignore")
 
-def train(config,model,dataloader,optimizier,device='cpu'):
+def train(config,model,dataloader,optimizer,device='cpu'):
     losses = []
     running_loss = 0.0
+    epoch = config['epoch']
+    # sava path
+    PATH = os.path.join(config['save_dir'],config['model_name'])
+    print(PATH)
 
-    for i, data in enumerate(dataloader['train'],0):
-        # zero the parameter gradients
-        optimizier.zero_grad()
+    for epoch in range(epoch):
+        for i, data in enumerate(dataloader['train'],0):
+            # zero the parameter gradients
+            optimizer.zero_grad()
 
-        # forward
-        raw_output = model(data['raw']['img'])
-        warp_output = model(data['warp']['img'])
+            # forward
+            raw_output = model(data['raw']['img'])
+            warp_output = model(data['warp']['img'])
 
-        prob,desc,prob_warp,desc_warp = raw_output['det_info'],\
-                                        raw_output['desc_info'],\
-                                        warp_output['det_info'],\
-                                        warp_output['desc_info']
-        # calculate loss
-        loss = loss_fn(config,
-                         prob,desc,
-                         prob_warp,
-                         desc_warp,
-                         data,
-                         device=device)
+            prob,desc,prob_warp,desc_warp = raw_output['det_info'],\
+                                            raw_output['desc_info'],\
+                                            warp_output['det_info'],\
+                                            warp_output['desc_info']
+            # calculate loss
+            loss = loss_fn(config,
+                             prob,desc,
+                             prob_warp,
+                             desc_warp,
+                             data,
+                             device=device)
+
+            # add running_loss
+            running_loss += loss.item()
+
+            # backward
+            loss.backward()
+
+            # step
+            optimizer.step()
+
+            # Save model
+            # save each 500 iter
+            if (i%500==0):
+                print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 500:.3f}')
+
+                # Save model
+                torch.save(model.state_dict(),PATH+"_"+str(running_loss)+".pth")
+                print("Torch save: "+PATH+"_"+str(running_loss)+"_.pth")
+
+                losses.append(running_loss/500)
+                running_loss = 0.0
+            
+
 
 
 
@@ -77,8 +105,8 @@ if __name__ == '__main__':
                                       shuffle=True,
                                       collate_fn=testset.batch_collator)}
 
-    # TODO: Load optimizier
-    optimizier = torch.optim.Adam(model.parameters(),
+    # TODO: Load optimizer
+    optimizer = torch.optim.Adam(model.parameters(),
                                   lr=config['solver']['base_lr'],
                                   betas=config['solver']['betas'])
-    losses = train(config['solver'],model,dataloader,optimizier,device=device)
+    losses = train(config['solver'],model,dataloader,optimizer,device=device)

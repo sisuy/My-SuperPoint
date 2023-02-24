@@ -193,7 +193,7 @@ if __name__=='__main__':
                              torch.zeros_like(valid_mask))
 
     loss = det_loss(keypoint_map,logits,8,valid_mask,device = 'cuda:0')
-    print("Detector loss: {}".format(loss))
+    # print("Detector loss: {}".format(loss))
 
     # Test for descriptor loss	
     config = {  'grid_size': 8,
