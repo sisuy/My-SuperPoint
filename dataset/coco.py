@@ -1,15 +1,15 @@
 import torch 
-import warnings
-warnings.filterwarnings("ignore")
 import os
-from utils.photometric_augmentation import PhotoAugmentor
 import glob
 import cv2
 import numpy as np
-from utils.keypoint_op import compute_keypoint_map
-from utils.homography_adaptation import homographic_aug_pipline
-from utils.solver import filter_points
 from copy import deepcopy
+from dataset.utils.photometric_augmentation import PhotoAugmentor
+from dataset.utils.keypoint_op import compute_keypoint_map
+from dataset.utils.homography_adaptation import homographic_aug_pipline
+from dataset.utils.solver import filter_points
+import warnings
+warnings.filterwarnings("ignore")
 
 class COCODataset(torch.utils.data.Dataset):
     def __init__(self,config,is_train=False,device='cpu'):
@@ -23,9 +23,10 @@ class COCODataset(torch.utils.data.Dataset):
         # train or test
         if self.is_train == True:
             self.samples = self._init_data(config['image_train_path'],config['label_train_path'])
-            print("COCO dataset size: {}".format(len(self.samples)))
+            print("COCO train dataset size: {}".format(len(self.samples)))
         else:
             self.samples = self._init_data(config['image_test_path'],config['label_test_path'])
+            print("COCO test dataset size: {}".format(len(self.samples)))
 
     # need to be implemented this function, nessearry for customized dataset
     ## load data into a list, use index to get the image and label of the sample image

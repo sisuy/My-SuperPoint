@@ -2,8 +2,12 @@ import yaml
 import os
 import torch
 import argparse
+from torch.utils.data import DataLoader
 from model.SuperPoint import SuperPointBNNet
 from torchviz import make_dot
+from dataset.coco import COCODataset
+import warnings
+warnings.filterwarnings("ignore")
 
 
 if __name__ == '__main__':
@@ -30,5 +34,21 @@ if __name__ == '__main__':
     device = 'mps'
     x = torch.randint(0,255,[1,1,240,320],dtype=torch.float,device=device)
     model = SuperPointBNNet(config['model'],device=device)
-    print(model)
 
+    # TODO: Load dataset
+    trainset = COCODataset(config['data'],is_train=True,device=device)
+    testset = COCODataset(config['data'],is_train=False,device=device)
+
+    # build dataloader
+    train_batchSize = 1
+    test_batchSize = 1
+    dataloader = {"train": DataLoader(trainset,
+                                      batch_size=train_batchSize,
+                                      shuffle=True,
+                                      collate_fn=trainset.batch_collator),
+                  "test": DataLoader(testset,
+                                      batch_size=test_batchSize,
+                                      shuffle=True,
+                                      collate_fn=testset.batch_collator)}
+
+    # TODO: Load optimizier
