@@ -2,9 +2,9 @@ import torch
 import os
 import torch.nn as nn
 import yaml
-from modules.VGGBackbone import VGGBackbone
-from modules.CNNheads import DetectorHead,DescriptorHead
-from solver import box_nms
+from model.modules.VGGBackbone import VGGBackbone
+from model.modules.CNNheads import DetectorHead,DescriptorHead
+from model.solver import box_nms
 # mainly copy from https://github.com/shaofengzeng/SuperPoint-Pytorch
 
 class SuperPointBNNet(torch.nn.Module):

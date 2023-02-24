@@ -3,6 +3,9 @@ import warnings
 warnings.filterwarnings("ignore")
 import torch.nn.functional as F
 
+def loss_fn():
+    pass
+
 def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
     '''
     Parameters:

@@ -1,5 +1,5 @@
 import torch
-from utils.tensor_op import pixel_shuffle
+from model.modules.utils.tensor_op import pixel_shuffle
 
 class DetectorHead(torch.nn.Module):
     def __init__(self,input_channel,grid_size,using_bn):

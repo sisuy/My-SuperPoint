@@ -2,6 +2,8 @@ import yaml
 import os
 import torch
 import argparse
+from model.SuperPoint import SuperPointBNNet
+from torchviz import make_dot
 
 
 if __name__ == '__main__':
@@ -15,8 +17,17 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     PATH = args.config
+    assert os.path.exists(PATH)
 
     with open(PATH,'r') as file:
         config = yaml.safe_load(file)
 
-    
+    # If not exists the export directory, then creat it 
+    if os.path.exists(config['solver']['save_dir']) == False:
+        os.mkdir(config['solver']['save_dir'])
+
+    # Load superpoint net
+    device = 'cuda:0'
+    x = torch.tensor([1,1,240,320],device=device)
+    model = SuperPointBNNet(config['model'],device=device)
+    make_dot(model(x), params=dict(model.named_parameters()))
