@@ -7,7 +7,35 @@ from model.SuperPoint import SuperPointBNNet
 from torchviz import make_dot
 from dataset.coco import COCODataset
 import warnings
+from solver.loss import loss_fn
 warnings.filterwarnings("ignore")
+
+def train(config,model,dataloader,optimizier,device='cpu'):
+    losses = []
+    running_loss = 0.0
+
+    for i, data in enumerate(dataloader['train'],0):
+        # zero the parameter gradients
+        optimizier.zero_grad()
+
+        # forward
+        raw_output = model(data['raw']['img'])
+        warp_output = model(data['warp']['img'])
+
+        prob,desc,prob_warp,desc_warp = raw_output['det_info'],\
+                                        raw_output['desc_info'],\
+                                        warp_output['det_info'],\
+                                        warp_output['desc_info']
+        # calculate loss
+        loss = loss_fn(config,
+                         prob,desc,
+                         prob_warp,
+                         desc_warp,
+                         data,
+                         device=device)
+
+
+
 
 
 if __name__ == '__main__':
@@ -40,15 +68,17 @@ if __name__ == '__main__':
     testset = COCODataset(config['data'],is_train=False,device=device)
 
     # build dataloader
-    train_batchSize = 1
-    test_batchSize = 1
     dataloader = {"train": DataLoader(trainset,
-                                      batch_size=train_batchSize,
+                                      batch_size=config['solver']['train_batch_size'],
                                       shuffle=True,
                                       collate_fn=trainset.batch_collator),
                   "test": DataLoader(testset,
-                                      batch_size=test_batchSize,
+                                      batch_size=config['solver']['test_batch_size'],
                                       shuffle=True,
                                       collate_fn=testset.batch_collator)}
 
     # TODO: Load optimizier
+    optimizier = torch.optim.Adam(model.parameters(),
+                                  lr=config['solver']['base_lr'],
+                                  betas=config['solver']['betas'])
+    losses = train(config['solver'],model,dataloader,optimizier,device=device)

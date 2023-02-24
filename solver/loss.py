@@ -3,9 +3,27 @@ import warnings
 warnings.filterwarnings("ignore")
 import torch.nn.functional as F
 
-def loss_fn():
-    pass
+def loss_fn(config,prob,desc,prob_warp,desc_warp,data,device='cpu'):
+    detLoss1 = det_loss(data['raw']['kpts_map'],
+                        prob['logit'],
+                        config['grid_size'],
+                        data['raw']['mask'],
+                        device=device)
 
+    detLoss2 = det_loss(data['warp']['kpts_map'],
+                        prob_warp['logit'],
+                        config['grid_size'],
+                        data['warp']['mask'],
+                        device=device)
+    weighted_desc_loss = desc_loss(config,
+                                   desc['desc_raw'],
+                                   desc_warp['desc_raw'],
+                                   data['homography'],
+                                   data['warp']['mask'],
+                                   device=device)
+    loss = detLoss1 + detLoss2 + weighted_desc_loss
+    print("loss:{:.3f} = {:.3f} + {:.3f} + {:.3f}".format(loss,detLoss1,detLoss2,weighted_desc_loss))
+    return loss
 def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
     '''
     Parameters:
@@ -17,7 +35,7 @@ def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
     keypoint_map = keypoint_map.unsqueeze(dim=1) # [1, 1, 240, 320]
 
     # pixel shuffle inverse 1 channels -> 64 channels
-    pixelShuffle_inv = torch.nn.PixelUnshuffle(downscale_factor=grid_size)
+    pixelShuffle_inv = torch.nn.PixelUnshuffle(grid_size)
     labels = pixelShuffle_inv(keypoint_map) # [1, 64, 30, 40]
     B,C,H,W = labels.shape
 
@@ -73,7 +91,7 @@ def warped_points(pixel_points,homography,device='cpu'):
 
 
 
-def descriptor_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,device='cpu'):
+def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,device='cpu'):
     """
     Parameter:
         descriptor: [B,C,H/8,W/8]
@@ -206,17 +224,17 @@ if __name__=='__main__':
     print('-----test1-----')
     descripto1 = torch.randint(-3,1,[1,65,30,40],dtype=torch.float,device=device)
     warped_descripto1 = torch.randint(-3,1,[1,65,30,40],dtype=torch.float,device=device)
-    loss1 = descriptor_loss(config,descripto1,warped_descripto1,homography1,valid_mask=valid_mask,device='cuda:0')
+    loss1 = desc_loss(config,descripto1,warped_descripto1,homography1,valid_mask=valid_mask,device='cuda:0')
     print("loss1: {}".format(loss1))
     print('-----test2-----')
 
     descriptor = torch.randint(-3,1,[1,65,30,40],dtype=torch.float,device=device)
     warped_descriptor = torch.randint(-3,1,[1,65,30,40],dtype=torch.float,device=device)
-    loss2 = descriptor_loss(config,descriptor,warped_descriptor,homography2,valid_mask=valid_mask,device='cuda:0')
+    loss2 = desc_loss(config,descriptor,warped_descriptor,homography2,valid_mask=valid_mask,device='cuda:0')
     print("loss2: {}".format(loss2))
     print('-----test3-----')
 
     descriptor = torch.randint(-3,1,[1,65,30,40],dtype=torch.float,device=device)
     warped_descriptor = torch.randint(-3,1,[1,65,30,40],dtype=torch.float,device=device)
-    loss3 = descriptor_loss(config,descriptor,warped_descriptor,homography2,valid_mask=valid_mask,device='cuda:0')
+    loss3 = desc_loss(config,descriptor,warped_descriptor,homography2,valid_mask=valid_mask,device='cuda:0')
     print("loss2: {}".format(loss3))

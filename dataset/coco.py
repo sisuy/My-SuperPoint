@@ -68,7 +68,7 @@ class COCODataset(torch.utils.data.Dataset):
         img_tensor = torch.as_tensor(img.copy(),dtype=torch.float,device=self.device) # [H,W]
         H,W = img_tensor.shape
         pts = None if pts is None else torch.as_tensor(pts,dtype=torch.float,device=self.device) # [N,2]
-        pts = filter_points(pts,[H,W],device=device)
+        pts = filter_points(pts,[H,W],device=self.device)
         kpts_map = compute_keypoint_map(pts,[H,W],device=self.device)
         valid_mask = torch.ones([H,W],device=self.device)
 
@@ -145,7 +145,6 @@ class COCODataset(torch.utils.data.Dataset):
         for k0 in ('raw','warp'):
             for k1 in ('img','kpts_map','mask'):
                 batch[k0][k1] = torch.stack(batch[k0][k1])
-        print("batch: {}".format(batch['raw']['img'].shape))
         return batch
 
 
