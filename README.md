@@ -13,37 +13,71 @@
 
 
 
-## Project architecture
-```
-├── README.md
-├── config
-│   └── superpoint_COCO_train.yaml
-├── dataset
-│   └── coco.py
-├── export
-│   └── superpoint.pth
-├── model
-│   ├── SuperPoint.py
-│   ├── __pycache__
-│   │   └── solver.cpython-39.pyc
-│   ├── modules
-│   │   ├── CNNheads.py
-│   │   ├── VGGBackbone.py
-│   │   └── __pycache__
-│   │       ├── CNNheads.cpython-39.pyc
-│   │       └── VGGBackbone.cpython-39.pyc
-│   ├── solver.py
-│   └── utils
-│       ├── __pycache__
-│       │   └── tensor_op.cpython-39.pyc
-│       └── tensor_op.py
-├── note
-│   ├── assets
-│   │   ├── Untitled 1.png
-│   │   ├── Untitled 2.png
-│   │   └── Untitled.png
-│   └── note.md
-├── requirements.txt
-├── solver
-└── train.py
+## model architecture
+```bash
+VGG device = mps
+SuperPointBNNet(
+  (backbone): VGGBackbone(
+    (block1_1): Sequential(
+      (0): Conv2d(1, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (1): ReLU(inplace=True)
+      (2): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    )
+    (block1_2): Sequential(
+      (0): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (1): ReLU(inplace=True)
+      (2): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (3): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+    )
+    (block2_1): Sequential(
+      (0): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (1): ReLU(inplace=True)
+      (2): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    )
+    (block2_2): Sequential(
+      (0): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (1): ReLU(inplace=True)
+      (2): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (3): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+    )
+    (block3_1): Sequential(
+      (0): Conv2d(64, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (1): ReLU(inplace=True)
+      (2): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    )
+    (block3_2): Sequential(
+      (0): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (1): ReLU(inplace=True)
+      (2): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (3): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+    )
+    (block4_1): Sequential(
+      (0): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (1): ReLU(inplace=True)
+      (2): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    )
+    (block4_2): Sequential(
+      (0): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (1): ReLU(inplace=True)
+      (2): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    )
+  )
+  (detectorHead): DetectorHead(
+    (convPa): Conv2d(128, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (relu): ReLU(inplace=True)
+    (BNPa): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (convPb): Conv2d(256, 65, kernel_size=(1, 1), stride=(1, 1))
+    (BNPb): BatchNorm2d(65, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (softmax): Softmax(dim=1)
+    (pixel_shuffle): PixelShuffle(upscale_factor=8)
+  )
+  (descriptorHead): DescriptorHead(
+    (convDa): Conv2d(128, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (convDb): Conv2d(256, 256, kernel_size=(1, 1), stride=(1, 1))
+    (relu): ReLU(inplace=True)
+    (BNDa): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (BNDb): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (upSampler): Upsample(scale_factor=8.0, mode=bicubic)
+  )
+)
 ```

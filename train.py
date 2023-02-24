@@ -27,7 +27,8 @@ if __name__ == '__main__':
         os.mkdir(config['solver']['save_dir'])
 
     # Load superpoint net
-    device = 'cuda:0'
-    x = torch.tensor([1,1,240,320],device=device)
+    device = 'mps'
+    x = torch.randint(0,255,[1,1,240,320],dtype=torch.float,device=device)
     model = SuperPointBNNet(config['model'],device=device)
-    make_dot(model(x), params=dict(model.named_parameters()))
+    print(model)
+

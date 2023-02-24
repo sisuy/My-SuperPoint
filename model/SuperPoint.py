@@ -13,19 +13,22 @@ class SuperPointBNNet(torch.nn.Module):
         self.nms = config['nms']
         self.det_thresh = config['det_thresh']
         self.topk = config['topk']
+        self.device = device
 
         # load backbone
-        self.backbone = VGGBackbone(config['backbone']['vgg'])
+        self.backbone = VGGBackbone(config['backbone']['vgg'],device=self.device)
 
         # load detectorHead and descriptorHead
         self.detectorHead = DetectorHead(config['backbone']['det_head']['feat_in_dim'],
                                            grid_size=grid_size,
-                                           using_bn=using_bn)
+                                           using_bn=using_bn,
+                                           device=self.device)
 
         self.descriptorHead = DescriptorHead(config['backbone']['des_head']['feat_in_dim'],
                                              config['backbone']['des_head']['feat_out_dim'],
                                              grid_size=config['grid_size'],
-                                             using_bn=config['using_bn'])
+                                             using_bn=config['using_bn'],
+                                             device=self.device)
     def forward(self,input):
         # check input type
         if isinstance(input,dict):
