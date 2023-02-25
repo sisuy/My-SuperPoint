@@ -68,7 +68,7 @@ def train(config,model,dataloader,optimizer,device='cpu'):
 
 if __name__ == '__main__':
     # solve enviroment problem
-    # os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+    os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     torch.multiprocessing.set_start_method('spawn')
 
     # import train config file 
@@ -87,7 +87,7 @@ if __name__ == '__main__':
         os.mkdir(config['solver']['save_dir'])
 
     # Load superpoint net
-    device = 'mps'
+    device = 'cuda:0'
     x = torch.randint(0,255,[1,1,240,320],dtype=torch.float,device=device)
     model = SuperPointBNNet(config['model'],device=device)
 

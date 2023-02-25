@@ -1,0 +1,42 @@
+data:
+  name: 'hpatches'
+  data_dir: 'data/hpatches'
+  alteration: 'all'
+  preprocessing:
+    resize: [240,320]
+    homography_adaptation:
+        num: 0
+        aggregation: 'sum'
+        filter_counts: 0
+        homographies:
+            translation: true
+            rotation: true
+            scaling: true
+            perspective: true
+            scaling_amplitude: 0.1
+            perspective_amplitude_x: 0.2
+            perspective_amplitude_y: 0.2
+            allow_artifacts: true
+            patch_ratio: 0.5
+model:
+  name: 'superpoint'
+  using_bn: true
+  grid_size: 8 # used to divide image into 8*8 cells
+  pretrained_model: 'none' # path to the pretrained model, if exist, then train the pretrained model
+  backbone:
+    backbone_type: 'VGG'
+    # Encoder of SuperPoint
+    vgg:
+        channels: [64,64,64,64,128,128,128,128]
+        convKernelSize: 3
+    # Detector decoder 
+    det_head:
+      feat_in_dim: 128
+
+    # Descriptor decoder
+    des_head:
+      feat_in_dim: 128
+      feat_out_dim: 256
+  det_thresh: 0.001
+  nms: 4
+  topk: 1000

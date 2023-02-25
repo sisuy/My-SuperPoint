@@ -5,6 +5,7 @@ from math import pi
 import collections
 import numpy as np
 import torch.nn.functional as F
+from imgaug import augmenters as iaa
 
 # solver function
 def filter_points(pts,shape,device='cpu'):
@@ -96,3 +97,17 @@ def erosion2d(image,radius=0,border_value=1e6,device='cpu'):
 
     # fold the image
     return ret
+
+def ratio_preserving_resize(img,target_size):
+    scales = np.array((target_size[0]/img.shape[0], target_size[1]/img.shape[1]))##h_s,w_s
+
+    new_size = np.round(np.array(img.shape)*np.max(scales)).astype(np.int)#
+    temp_img = cv2.resize(img, tuple(new_size[::-1]))
+    curr_h, curr_w = temp_img.shape
+    target_h, target_w = target_size
+    ##
+    hp = (target_h-curr_h)//2
+    wp = (target_w-curr_w)//2
+    aug = iaa.Sequential([iaa.CropAndPad(px=(hp, wp, target_h-curr_h-hp, target_w-curr_w-wp),keep_size=False),])
+    new_img = aug(images=temp_img)
+    return new_img
