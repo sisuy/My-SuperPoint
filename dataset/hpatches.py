@@ -2,7 +2,7 @@ import os
 import numpy as np
 import torch
 import cv2
-from utils.solver import ratio_preserving_resize
+from dataset.utils.solver import ratio_preserving_resize
 
 
 class PatchesDataset(torch.utils.data.Dataset):
@@ -142,8 +142,8 @@ class PatchesDataset(torch.utils.data.Dataset):
 
 
 if __name__=="__main__":
-    from torch.utils.data import DataLoader
     import matplotlib.pyplot as plt
+    from torch.utils.data import DataLoader
     import yaml
     PATH = './config/detection_repeatability.yaml'
     with open(PATH,'r') as file:

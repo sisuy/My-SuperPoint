@@ -1,6 +1,7 @@
 data:
   name: 'hpatches'
   data_dir: 'data/hpatches'
+  export_dir: 'data/repeatability'  
   alteration: 'all'
   preprocessing:
     resize: [240,320]
@@ -20,9 +21,9 @@ data:
             patch_ratio: 0.5
 model:
   name: 'superpoint'
+  pretrained_model: "./export/superpoint.pth"
   using_bn: true
   grid_size: 8 # used to divide image into 8*8 cells
-  pretrained_model: 'none' # path to the pretrained model, if exist, then train the pretrained model
   backbone:
     backbone_type: 'VGG'
     # Encoder of SuperPoint
