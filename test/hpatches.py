@@ -2,7 +2,7 @@ import os
 import numpy as np
 import torch
 import cv2
-from dataset.utils.solver import ratio_preserving_resize
+from utils.solver import ratio_preserving_resize
 
 
 class PatchesDataset(torch.utils.data.Dataset):
