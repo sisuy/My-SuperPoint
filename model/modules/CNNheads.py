@@ -27,7 +27,7 @@ class DetectorHead(torch.nn.Module):
         # block1
         out = self.convPa(input)
         out = self.relu(out)
-        self.BNPa(out)
+        out = self.BNPa(out)
     
         # block2
         out = self.convPb(out)

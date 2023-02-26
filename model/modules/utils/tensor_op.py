@@ -16,7 +16,7 @@ def pixel_shuffle(tensor, scale_factor):
     newWidth = width*scale_factor
 
     # shuffule
-    tensor = torch.reshape(tensor,(newNum,newChannel,height,scale_factor,width,scale_factor))
+    tensor = torch.reshape(tensor,(newNum,newChannel,scale_factor,scale_factor,height,width))
     tensor = tensor.permute(0,1,4,2,5,3)
     tensor = torch.reshape(tensor,(newNum,newChannel,newHeight,newWidth))
     return tensor

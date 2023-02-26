@@ -34,11 +34,10 @@ def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
         valid_mask: [B,H,W]
         grid_size: int(default=8)
     '''
-    keypoint_map = keypoint_map.unsqueeze(dim=1) # [1, 1, 240, 320]
+    labels = keypoint_map.unsqueeze(dim=1).float() # [1, 1, 240, 320]
 
     # pixel shuffle inverse 1 channels -> 64 channels
-    pixelShuffle_inv = torch.nn.PixelUnshuffle(grid_size)
-    labels = pixel_shuffle_inv(keypoint_map,grid_size) # [1, 64, 30, 40]
+    labels = pixel_shuffle_inv(labels,grid_size) # [1, 64, 30, 40]
     B,C,H,W = labels.shape
 
     # add dusbin(torch.ones -> [1,1,30,40])

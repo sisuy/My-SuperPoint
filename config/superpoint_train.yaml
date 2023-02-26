@@ -48,16 +48,12 @@ model:
   pretrained_model: 'none' # path to the pretrained model, if exist, then train the pretrained model
   backbone:
     backbone_type: 'VGG'
-    # Encoder of SuperPoint
-    vgg:
+    vgg: # Encoder of SuperPoint
         channels: [64,64,64,64,128,128,128,128]
         convKernelSize: 3
-    # Detector decoder 
-    det_head:
+    det_head: # Detector decoder
       feat_in_dim: 128
-
-    # Descriptor decoder
-    des_head:
+    des_head: # Descriptor decoder
       feat_in_dim: 128
       feat_out_dim: 256
   det_thresh: 0.001
