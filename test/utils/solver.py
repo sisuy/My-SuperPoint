@@ -31,7 +31,7 @@ def warped_points(points, homographies, device='cpu'):
         return points
 
     #TODO: Part1, the following code maybe not appropriate for your code
-    # points = torch.fliplr(points)
+    points = torch.fliplr(points)
     if len(homographies.shape)==2:
         homographies = homographies.unsqueeze(0)
     B = homographies.shape[0]

@@ -4,10 +4,10 @@ import glob
 import cv2
 import numpy as np
 from copy import deepcopy
-from dataset.utils.photometric_augmentation import PhotoAugmentor
-from dataset.utils.keypoint_op import compute_keypoint_map
-from dataset.utils.homography_adaptation import homographic_aug_pipline
-from dataset.utils.solver import filter_points
+from utils.photometric_augmentation import PhotoAugmentor
+from utils.keypoint_op import compute_keypoint_map
+from utils.homography_adaptation import homographic_aug_pipline
+from utils.solver import filter_points
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -152,7 +152,7 @@ class COCODataset(torch.utils.data.Dataset):
 # test dataset
 if __name__=="__main__":
     is_train = True
-    device = 'mps'
+    device = 'cuda:0'
     batch_size = 1
     config = {'name': 'coco',
               'resize': [240, 320],

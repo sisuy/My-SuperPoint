@@ -3,6 +3,7 @@ import warnings
 warnings.filterwarnings("ignore")
 import torch.nn.functional as F
 from model.modules.utils.tensor_op import pixel_shuffle,pixel_shuffle_inv
+from dataset.utils.solver import warped_points
 
 def loss_fn(config,prob,desc,prob_warp,desc_warp,data,device='cpu'):
     detLoss1 = det_loss(data['raw']['kpts_map'],
@@ -62,36 +63,6 @@ def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
     loss = torch.divide(torch.sum(loss*valid_mask,dim=(1,2)),
                         torch.sum(valid_mask + 1e-6,dim=(1,2)))
     return torch.mean(loss)
-
-def warped_points(points, homographies, device='cpu'):
-    """
-    :param points: (N,2), tensor
-    :param homographies: [B, 3, 3], batch of homographies
-    :return: warped points B,N,2
-    """
-    if len(points)==0:
-        return points
-
-    #TODO: Part1, the following code maybe not appropriate for your code
-    points = torch.fliplr(points)
-    if len(homographies.shape)==2:
-        homographies = homographies.unsqueeze(0)
-    B = homographies.shape[0]
-    ##TODO: uncomment the following line to get same result as tf version
-    # homographies = torch.linalg.inv(homographies)
-    points = torch.cat((points, torch.ones((points.shape[0], 1),device=device)),dim=1)
-    ##each row dot each column of points.transpose
-    warped_points = torch.tensordot(homographies, points.transpose(1,0),dims=([2], [0]))#batch dot
-    ##
-    warped_points = warped_points.reshape([B, 3, -1])
-    warped_points = warped_points.transpose(2, 1)
-    warped_points = warped_points[:, :, :2] / warped_points[:, :, 2:]
-    #TODO: Part2, the flip operation is combinated with Part1
-    warped_points = torch.flip(warped_points,dims=(2,))
-    #TODO: Note: one point case
-    warped_points = warped_points.squeeze(dim=0)
-    return warped_points
-
 
 def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,device='cpu'):
     """

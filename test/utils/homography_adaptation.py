@@ -6,8 +6,8 @@ import numpy as np
 from scipy.stats import truncnorm
 from numpy.random import uniform
 import kornia
-from dataset.utils.solver import dict_update,erosion2d,warped_points,filter_points
-from dataset.utils.keypoint_op import compute_keypoint_map
+from utils.solver import dict_update,erosion2d,warped_points,filter_points
+from utils.keypoint_op import compute_keypoint_map
 
 
 def homographic_aug_pipline(img, pts, config, device='cpu'):
