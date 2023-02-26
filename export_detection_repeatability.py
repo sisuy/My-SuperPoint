@@ -2,6 +2,7 @@ import os
 import yaml
 import numpy as np
 import torch
+from tqdm import tqdm
 from torch.utils.data import DataLoader
 from model.SuperPoint import SuperPointBNNet
 from dataset.hpatches import PatchesDataset 
@@ -14,7 +15,7 @@ if __name__=="__main__":
 
     # load dataset and generate dataloader
     dataset = PatchesDataset(config['data'],device=device)
-    dataloader = DataLoader(dataset,batch_size=1,shuffle=True,collate_fn=dataset.batch_collator)
+    dataloader = DataLoader(dataset,batch_size=1,shuffle=False,collate_fn=dataset.batch_collator)
 
     # load net
     net = SuperPointBNNet(config['model'],device=device)
@@ -23,13 +24,15 @@ if __name__=="__main__":
     print("Network loading finished")
 
     with torch.no_grad():
-        for i,data in enumerate(dataloader):
+        for i,data in tqdm(enumerate(dataloader)):
             prob1 = net(data['img'])
             prob2 = net(data['warped_img'])
 
             pred = {'prob': prob1['det_info']['prob_nms'],
                     'warp_prob': prob2['det_info']['prob_nms'],
                     'homography': data['homography']}
+
+            pred.update(data)
        
             # to numpy files
             pred = {k:v.cpu().numpy().squeeze() for k,v in pred.items()}

@@ -8,58 +8,68 @@ from torchviz import make_dot
 from dataset.coco import COCODataset
 import warnings
 from solver.loss import loss_fn
+from tqdm import tqdm
 warnings.filterwarnings("ignore")
 
-def train(config,model,dataloader,optimizer,device='cpu'):
+def train(config,model,dataloader,device='cpu'):
+    # TODO: Load optimizer
+    optimizer = torch.optim.Adam(model.parameters(),
+                                  lr=config['base_lr'])
+                                  # betas=config['solver']['betas'])
     losses = []
     running_loss = 0.0
     epoch = config['epoch']
     # sava path
     PATH = os.path.join(config['save_dir'],config['model_name'])
     print(PATH)
+    
+    try:
+        for epoch in range(epoch):
+            model.train()
+            for i, data in tqdm(enumerate(dataloader['train'])):
+                # forward
+                raw_output = model(data['raw']['img'])
+                warp_output = model(data['warp']['img'])
 
-    for epoch in range(epoch):
-        for i, data in enumerate(dataloader['train'],0):
-            # zero the parameter gradients
-            optimizer.zero_grad()
+                prob,desc,prob_warp,desc_warp = raw_output['det_info'],\
+                                                raw_output['desc_info'],\
+                                                warp_output['det_info'],\
+                                                warp_output['desc_info']
+                # calculate loss
+                loss = loss_fn(config,
+                               prob,desc,
+                               prob_warp,
+                               desc_warp,
+                               data,
+                               device=device)
 
-            # forward
-            raw_output = model(data['raw']['img'])
-            warp_output = model(data['warp']['img'])
+                # add running_loss
+                running_loss += loss.item()
 
-            prob,desc,prob_warp,desc_warp = raw_output['det_info'],\
-                                            raw_output['desc_info'],\
-                                            warp_output['det_info'],\
-                                            warp_output['desc_info']
-            # calculate loss
-            loss = loss_fn(config,
-                             prob,desc,
-                             prob_warp,
-                             desc_warp,
-                             data,
-                             device=device)
+                # zero the parameter gradients
+                model.zero_grad()
 
-            # add running_loss
-            running_loss += loss.item()
+                # backward
+                loss.backward()
 
-            # backward
-            loss.backward()
-
-            # step
-            optimizer.step()
-
-            # Save model
-            # save each 500 iter
-            if (i%500==0):
-                print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 500:.3f}')
+                # step
+                optimizer.step()
 
                 # Save model
-                torch.save(model.state_dict(),PATH+"_"+str(running_loss)+".pth")
-                print("Torch save: "+PATH+"_"+str(running_loss)+"_.pth")
+                # save each 500 iter
+                if (i%500==0):
+                    print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 500:.3f}')
 
-                losses.append(running_loss/500)
-                running_loss = 0.0
-            
+                    # Save model
+                    # torch.save(model.state_dict(),PATH+"_"+str(running_loss)+".pth")
+                    # print("Torch save: "+PATH+"_"+str(running_loss/500)+"_.pth")
+                    torch.save(model.state_dict(),PATH+".pth")
+                    print("Torch save: "+PATH+".pth")
+
+                    losses.append(running_loss/500)
+                    running_loss = 0.0
+    except KeyboardInterrupt:
+        torch.save(model.state_dict(),os.path.join(config['save_dir'],'keyboardInterrupt.pth'))
 
 
 
@@ -105,8 +115,4 @@ if __name__ == '__main__':
                                       shuffle=True,
                                       collate_fn=testset.batch_collator)}
 
-    # TODO: Load optimizer
-    optimizer = torch.optim.Adam(model.parameters(),
-                                  lr=config['solver']['base_lr'],
-                                  betas=config['solver']['betas'])
-    losses = train(config['solver'],model,dataloader,optimizer,device=device)
+    losses = train(config['solver'],model,dataloader,device=device)

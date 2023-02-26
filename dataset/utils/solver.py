@@ -21,32 +21,32 @@ def filter_points(pts,shape,device='cpu'):
     else:
         return pts
 
-def warped_points(pixel_points,homography,device='cpu'):
-    '''
-    Parameters:
-        pixel_points: [N,2]
-        homography: [B,3,3]
+def warped_points(points, homographies, device='cpu'):
+    """
+    :param points: (N,2), tensor
+    :param homographies: [B, 3, 3], batch of homographies
+    :return: warped points B,N,2
+    """
+    if len(points)==0:
+        return points
 
-    return points: [N,2]
-    '''
-    # homography batch processing
-    if len(homography.shape) == 2:
-        homography = homography.unsqueeze(dim=0) # [1,3,3]
-    
-    B = homography.shape[0]
-
-    pixel_points = torch.fliplr(pixel_points)
-    # Homogrous
-    pixel_points = torch.cat([pixel_points,torch.ones([pixel_points.shape[0],1],device=device)],dim=1)
-    pixel_points = torch.transpose(pixel_points,1,0) # [3,N]
-
-    warped_points = torch.tensordot(homography,pixel_points,dims=[[2],[0]]) # [B,3,N]
-
-    # normalisze: homogrous -> 2D
-    warped_points = warped_points.transpose(1,2) # [B,N,3]
-    warped_points = warped_points[:,:,:2]/warped_points[:,:,2:] # [B,1200,2]
-
+    #TODO: Part1, the following code maybe not appropriate for your code
+    # points = torch.fliplr(points)
+    if len(homographies.shape)==2:
+        homographies = homographies.unsqueeze(0)
+    B = homographies.shape[0]
+    ##TODO: uncomment the following line to get same result as tf version
+    # homographies = torch.linalg.inv(homographies)
+    points = torch.cat((points, torch.ones((points.shape[0], 1),device=device)),dim=1)
+    ##each row dot each column of points.transpose
+    warped_points = torch.tensordot(homographies, points.transpose(1,0),dims=([2], [0]))#batch dot
+    ##
+    warped_points = warped_points.reshape([B, 3, -1])
+    warped_points = warped_points.transpose(2, 1)
+    warped_points = warped_points[:, :, :2] / warped_points[:, :, 2:]
+    #TODO: Part2, the flip operation is combinated with Part1
     warped_points = torch.flip(warped_points,dims=(2,))
+    #TODO: Note: one point case
     warped_points = warped_points.squeeze(dim=0)
     return warped_points
 

@@ -1,7 +1,7 @@
 data:
   name: 'hpatches'
   data_dir: 'data/hpatches'
-  export_dir: 'data/repeatability'  
+  export_dir: 'D:\Li\github\SuperPoint-Pytorch\data\repeatibility\hpatches\sp'
   alteration: 'all'
   preprocessing:
     resize: [240,320]
@@ -39,5 +39,5 @@ model:
       feat_in_dim: 128
       feat_out_dim: 256
   det_thresh: 0.001
-  nms: 4
+  nms: 5
   topk: 1000

@@ -1,5 +1,5 @@
 import torch
-from model.modules.utils.tensor_op import pixel_shuffle
+from model.modules.utils.tensor_op import pixel_shuffle,pixel_shuffle_inv
 
 class DetectorHead(torch.nn.Module):
     def __init__(self,input_channel,grid_size,using_bn,device='cpu'):
@@ -31,14 +31,14 @@ class DetectorHead(torch.nn.Module):
     
         # block2
         out = self.convPb(out)
-        out = self.relu(out)
+        # out = self.relu(out)
         prob_map = self.BNPb(out)
 
         # apply softmax function
-        prob_map = prob_map[:,:-1,:,:]
         prob_map = self.softmax(prob_map)
+        prob_map = prob_map[:,:-1,:,:]
 
-        prob_map =self.pixel_shuffle(prob_map) # output size: [B,1,240,320]
+        prob_map =pixel_shuffle(prob_map,self.grid_size) # output size: [B,1,240,320]
         prob_map = prob_map.squeeze(dim=1)
 
         # we need pixel shuffle to up-sample
@@ -75,12 +75,11 @@ class DescriptorHead(torch.nn.Module):
 
         # Block2
         out = self.convDb(out)
-        out = self.relu(out)
         desc_raw = self.BNDb(out)
 
         # Bicubic interpolation
-        desc = self.upSampler(desc_raw)
-
+        # desc = self.upSampler(desc_raw)
+        desc = torch.nn.functional.interpolate(out, scale_factor=self.grid_size, mode='bilinear',align_corners=False)
         # L2-normalisation - Non-learned upsampling
         desc = torch.nn.functional.normalize(desc,p=2,dim=1) # why dim = 1?
         

@@ -2,6 +2,7 @@ import torch
 import warnings
 warnings.filterwarnings("ignore")
 import torch.nn.functional as F
+from model.modules.utils.tensor_op import pixel_shuffle,pixel_shuffle_inv
 
 def loss_fn(config,prob,desc,prob_warp,desc_warp,data,device='cpu'):
     detLoss1 = det_loss(data['raw']['kpts_map'],
@@ -36,7 +37,7 @@ def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
 
     # pixel shuffle inverse 1 channels -> 64 channels
     pixelShuffle_inv = torch.nn.PixelUnshuffle(grid_size)
-    labels = pixelShuffle_inv(keypoint_map) # [1, 64, 30, 40]
+    labels = pixel_shuffle_inv(keypoint_map,grid_size) # [1, 64, 30, 40]
     B,C,H,W = labels.shape
 
     # add dusbin(torch.ones -> [1,1,30,40])
@@ -48,47 +49,48 @@ def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
         valid_mask = torch.ones([B,H,W])
 
     valid_mask = valid_mask.unsqueeze(dim=1) # [B,1,H,W] 
-    valid_mask =  pixelShuffle_inv(valid_mask) # [B,64,H/8,W/8]
+    valid_mask =  pixel_shuffle_inv(valid_mask,grid_size) # [B,64,H/8,W/8]
     valid_mask = torch.prod(valid_mask,dim=1).unsqueeze(dim=1) # [B,1,H/8,W/8]
 
     # use cross-entropy to get the loss
-    lossFunction = torch.nn.CrossEntropyLoss(reduction='none')
-    loss = lossFunction(logits,labels) # [1,30,40]
+    # lossFunction = torch.nn.CrossEntropy(reduction='none')
+    # loss = lossFunction(logits,labels) # [1,30,40]
+    loss = torch.nn.functional.cross_entropy(logits,labels,reduction='none')
     valid_mask = valid_mask.squeeze(dim=1) # [1,30,40]
 
     # generate the loss covered by valid mask
-    loss = torch.divide(torch.sum(valid_mask*loss,dim=(1,2)),
+    loss = torch.divide(torch.sum(loss*valid_mask,dim=(1,2)),
                         torch.sum(valid_mask + 1e-6,dim=(1,2)))
     return torch.mean(loss)
 
-def warped_points(pixel_points,homography,device='cpu'):
-    '''
-    Parameters:
-        pixel_points: [N,2]
-        homography: [B,3,3]
+def warped_points(points, homographies, device='cpu'):
+    """
+    :param points: (N,2), tensor
+    :param homographies: [B, 3, 3], batch of homographies
+    :return: warped points B,N,2
+    """
+    if len(points)==0:
+        return points
 
-    return points: [N,2]
-    '''
-    # homography batch processing
-    if len(homography.shape) == 2:
-        homography = homography.unsqueeze(dim=0) # [1,3,3]
-    
-    B = homography.shape[0]
-
-    # Homogrous
-    pixel_points = torch.cat([pixel_points,torch.ones([pixel_points.shape[0],1],device=device)],dim=1)
-    pixel_points = torch.transpose(pixel_points,1,0) # [3,N]
-
-    warped_points = torch.tensordot(homography,pixel_points,dims=[[2],[0]]) # [B,3,N]
-
-    # normalisze: homogrous -> 2D
-    warped_points = warped_points.transpose(1,2) # [B,N,3]
-    warped_points = warped_points[:,:,:2]/warped_points[:,:,2:] # [B,1200,2]
-
+    #TODO: Part1, the following code maybe not appropriate for your code
+    points = torch.fliplr(points)
+    if len(homographies.shape)==2:
+        homographies = homographies.unsqueeze(0)
+    B = homographies.shape[0]
+    ##TODO: uncomment the following line to get same result as tf version
+    # homographies = torch.linalg.inv(homographies)
+    points = torch.cat((points, torch.ones((points.shape[0], 1),device=device)),dim=1)
+    ##each row dot each column of points.transpose
+    warped_points = torch.tensordot(homographies, points.transpose(1,0),dims=([2], [0]))#batch dot
+    ##
+    warped_points = warped_points.reshape([B, 3, -1])
+    warped_points = warped_points.transpose(2, 1)
+    warped_points = warped_points[:, :, :2] / warped_points[:, :, 2:]
+    #TODO: Part2, the flip operation is combinated with Part1
     warped_points = torch.flip(warped_points,dims=(2,))
+    #TODO: Note: one point case
     warped_points = warped_points.squeeze(dim=0)
     return warped_points
-
 
 
 def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,device='cpu'):
@@ -119,8 +121,8 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
     warpedPixel_coord = warped_points(pixel_points,homography,device=device) # [N,2] if batch size==1, else [B,N,2]
 
     # reshape the coord tensor into the form like: [batch,Hc,Wc,1,1,2] and [batch,1,1,Hc,Wc,2]
-    pixel_coord = torch.reshape(pixel_coord,[B,Hc,Wc,1,1,2])
-    warpedPixel_coord = torch.reshape(warpedPixel_coord,[B,1,1,Hc,Wc,2])
+    pixel_coord = torch.reshape(pixel_coord,[B,1,1,Hc,Wc,2])
+    warpedPixel_coord = torch.reshape(warpedPixel_coord,[B,Hc,Wc,1,1,2])
 
     # TODO: Calculate the L2 norm
     cells_distance = torch.norm(warpedPixel_coord-pixel_coord,p='fro',dim=-1)
@@ -163,7 +165,7 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
     valid_mask = torch.unsqueeze(valid_mask,dim=1).type(torch.float32) # [B,1,H,W]
 
     unshuffler = torch.nn.PixelUnshuffle(grid_size)
-    valid_mask = unshuffler(valid_mask) # [B,C,Hc,Wc]
+    valid_mask = pixel_shuffle_inv(valid_mask,grid_size) # [B,C,Hc,Wc]
     valid_mask = torch.prod(valid_mask,dim=1) # [B,Hc,Wc]
 
     # copy debug from https://github.com/shaofengzeng/SuperPoint-Pytorch/blob/master/solver/loss.py
