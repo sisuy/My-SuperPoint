@@ -50,16 +50,16 @@ def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
     valid_mask = valid_mask.unsqueeze(dim=1) # [B,1,H,W] 
     valid_mask =  pixel_shuffle_inv(valid_mask,grid_size) # [B,64,H/8,W/8]
     valid_mask = torch.prod(valid_mask,dim=1).unsqueeze(dim=1).type(torch.float32) # [B,1,H/8,W/8]
+    valid_mask = valid_mask.squeeze(dim=1) # [1,30,40]
+
 
     # use cross-entropy to get the loss
-    # lossFunction = torch.nn.CrossEntropy(reduction='none')
-    # loss = lossFunction(logits,labels) # [1,30,40]
     loss = torch.nn.functional.cross_entropy(logits,labels,reduction='none')
-    valid_mask = valid_mask.squeeze(dim=1) # [1,30,40]
 
     # generate the loss covered by valid mask
     loss = torch.divide(torch.sum(loss*valid_mask,dim=(1,2)),
                         torch.sum(valid_mask + 1e-6,dim=(1,2)))
+
     return torch.mean(loss)
 
 def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,device='cpu'):
@@ -96,7 +96,7 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
     cells_distance = torch.norm(warpedPixel_coord-pixel_coord,p='fro',dim=-1)
     
     # Calculate s
-    s = (cells_distance-(grid_size-0.5)<=0).float() # [B,Hc,Wc,Hc,Wc]
+    s = (cells_distance<=(grid_size-0.5)).float() # [B,Hc,Wc,Hc,Wc]
 
     # descriptor reshape
     descriptor = torch.reshape(descriptor,[B,-1,Hc,Wc,1,1])
