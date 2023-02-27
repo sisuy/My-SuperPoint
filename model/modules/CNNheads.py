@@ -35,10 +35,10 @@ class DetectorHead(torch.nn.Module):
 
         # apply softmax function
         prob_map = self.softmax(out)
-        prob_map = prob_map[:,:-1,:,:]
+        prob_map = prob_map[:,:-1,:,:] # [B,grid_size*grid_size,H/grid_size,W/grid_size]
 
-        prob_map =self.pixel_shuffle(prob_map) # output size: [B,1,240,320]
-        prob_map = prob_map.squeeze(dim=1)
+        prob_map =self.pixel_shuffle(prob_map) # output size: [B,1,H,W]
+        prob_map = prob_map.squeeze(dim=1) # [B,H,W]
 
         # we need pixel shuffle to up-sample
         return {'logit':out,'prob':prob_map}
@@ -74,7 +74,7 @@ class DescriptorHead(torch.nn.Module):
 
         # Block2
         out = self.convDb(out)
-        out = self.BNDb(out)
+        out = self.BNDb(out) # [B,256,H/8,W/8]
 
         # Bicubic interpolation
         desc = self.upSampler(out)

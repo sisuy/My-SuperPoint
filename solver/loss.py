@@ -47,20 +47,26 @@ def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
     # generate valid_mask: [B,H,W] -> [B,H/8,/W/8]
     if valid_mask is None:
         valid_mask = torch.ones_like(keypoint_map)
+    else:
+        valid_mask = valid_mask
 
     valid_mask = valid_mask.unsqueeze(dim=1) # [B,1,H,W] 
     valid_mask =  pixelShuffle_inv(valid_mask) # [B,64,H/8,W/8]
     valid_mask = torch.prod(valid_mask,dim=1).unsqueeze(dim=1) # [B,1,H/8,W/8]
 
-    # use cross-entropy to get the loss
-    lossFunction = torch.nn.CrossEntropyLoss(reduction='none')
-    loss = lossFunction(logits,labels) # [1,30,40]
-    valid_mask = valid_mask.squeeze(dim=1) # [1,30,40]
+    # apply softmax on predicted logits value
+    loss = torch.nn.functional.log_softmax(logits,dim=1)
+    mask = valid_mask.type(torch.float32)
 
     # generate the loss covered by valid mask
-    loss = torch.divide(torch.sum(valid_mask*loss,dim=(1,2)),
-                        torch.sum(valid_mask + 1e-6,dim=(1,2)))
-    return torch.mean(loss)
+    mask = mask.squeeze(dim=1) # [1,30,40]
+    mask = mask/(torch.mean(mask)+1e-5)
+    loss = mask*loss
+
+    # use cross-entropy to get the loss
+    lossFunction = torch.nn.CrossEntropyLoss(reduction='mean')
+    loss = lossFunction(logits,labels) # [1,30,40]
+    return loss
 
 def warped_points(pixel_points,homography,device='cpu'):
     '''
