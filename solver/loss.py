@@ -24,7 +24,7 @@ def loss_fn(config,prob,desc,prob_warp,desc_warp,data,device='cpu'):
                                    data['warp']['mask'],
                                    device=device)
     loss = detLoss1 + detLoss2 + weighted_desc_loss
-    print("loss:{:.3f} = {:.3f} + {:.3f} + {:.3f}".format(loss,detLoss1,detLoss2,weighted_desc_loss))
+    print("loss:{:.3f} = {:.3f} + {:.3f} + {:.3f}".format(loss.item(),detLoss1.item(),detLoss2.item(),weighted_desc_loss.item()))
     return loss
 def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
     '''
@@ -54,13 +54,13 @@ def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
 
 
     # use cross-entropy to get the loss
-    loss = torch.nn.functional.cross_entropy(logits,labels,reduction='none')
+    loss = torch.nn.functional.cross_entropy(logits,labels,reduction='mean')
 
     # generate the loss covered by valid mask
     loss = torch.divide(torch.sum(loss*valid_mask,dim=(1,2)),
                         torch.sum(valid_mask + 1e-6,dim=(1,2)))
 
-    return torch.mean(loss)
+    return loss
 
 def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,device='cpu'):
     """
@@ -121,13 +121,14 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
                                             torch.reshape(dot_product_descriptor,[B,Hc*Wc,Hc,Wc]),
                                             p=2,
                                             dim=1),[B,Hc,Wc,Hc,Wc])
+
     positive_dist = torch.maximum(torch.tensor(0.,device=device),positive_margin-dot_product_descriptor)
     negative_dist = torch.maximum(torch.tensor(0.,device=device),dot_product_descriptor-negative_margin)
     loss = lambda_d*s*positive_dist + (1-s)*negative_dist # [B,Hc,Wc,Hc,Wc]
 
     # use mask to filter the keypoints
     # valid_mask: [B,Hc*grid_size,Wc*grid_size]
-    valid_mask = torch.ones([B,Hc*grid_size,Wc*grid_sze],dtype=torch.float,device=device) if valid_mask is None else valid_mask
+    valid_mask = torch.ones([B,Hc*grid_size,Wc*grid_sze],dtype=torch.float32,device=device) if valid_mask is None else valid_mask
 
     # reshape it by using unshuffle_pixle
     valid_mask = torch.unsqueeze(valid_mask,dim=1).type(torch.float32) # [B,1,H,W]
@@ -146,7 +147,7 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
 
     loss = lambda_loss*torch.sum(loss*valid_mask)/normalization
     print("descriptor loss: {}".format(loss))
-    return loss
+    return torch.sum(loss)
 
 
 # test
