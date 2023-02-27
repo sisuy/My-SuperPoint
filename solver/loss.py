@@ -61,7 +61,7 @@ def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
     # generate the loss covered by valid mask
     mask = mask.squeeze(dim=1) # [1,30,40]
     mask = mask/(torch.mean(mask)+1e-5)
-    loss = mask*loss
+    loss = torch.mul(loss,mask)
 
     # use cross-entropy to get the loss
     lossFunction = torch.nn.CrossEntropyLoss(reduction='mean')
@@ -118,7 +118,7 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
     negative_margin = config['loss']['negative_margin']
 
     pixel_coord = torch.stack(torch.meshgrid([torch.arange(Hc,device=device),
-                                             torch.arange(Wc,device=device)]),dim=-1) # [30,40,2]
+                                             torch.arange(Wc,device=device)]),dim=-1) # [H/8,W/8,2]
 
     # compute the central pixel of the coord
     pixel_coord = pixel_coord*grid_size + grid_size//2
@@ -127,7 +127,7 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
     warpedPixel_coord = warped_points(pixel_points,homography,device=device) # [N,2] if batch size==1, else [B,N,2]
 
     # reshape the coord tensor into the form like: [batch,Hc,Wc,1,1,2] and [batch,1,1,Hc,Wc,2]
-    pixel_coord = torch.reshape(pixel_coord,[B,1,1,Hc,Wc,2])
+    pixel_coord = torch.reshape(pixel_coord,[B,1,1,Hc,Wc,2]).type(torch.float32)
     warpedPixel_coord = torch.reshape(warpedPixel_coord,[B,Hc,Wc,1,1,2])
 
     # TODO: Calculate the L2 norm
@@ -146,7 +146,7 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
 
 
     dot_product_descriptor = torch.sum(descriptor*warped_descriptor,dim=1)
-    dot_product_descriptor = F.relu(dot_product_descriptor) # [B,Hc,Wc,Hc,Wc]
+    # dot_product_descriptor = F.relu(dot_product_descriptor) # [B,Hc,Wc,Hc,Wc]
 
     # TODO: Maybe wrong here
     # use L2 norm to get average 1/(Hc*Wc)^2
@@ -159,6 +159,7 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
                                             torch.reshape(dot_product_descriptor,[B,Hc*Wc,Hc,Wc]),
                                             p=2,
                                             dim=1),[B,Hc,Wc,Hc,Wc])
+
     positive_dist = torch.maximum(torch.tensor(0.,device=device),positive_margin-dot_product_descriptor)
     negative_dist = torch.maximum(torch.tensor(0.,device=device),dot_product_descriptor-negative_margin)
     loss = lambda_d*s*positive_dist + (1-s)*negative_dist # [B,Hc,Wc,Hc,Wc]
@@ -173,6 +174,7 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
     unshuffler = torch.nn.PixelUnshuffle(grid_size)
     valid_mask = unshuffler(valid_mask) # [B,C,Hc,Wc]
     valid_mask = torch.prod(valid_mask,dim=1) # [B,Hc,Wc]
+    valid_mask = torch.reshape(valid_mask,[B,1,1,Hc,Wc])
 
     # copy debug from https://github.com/shaofengzeng/SuperPoint-Pytorch/blob/master/solver/loss.py
     normalization = torch.sum(valid_mask)*(Hc*Wc)
@@ -183,7 +185,6 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
     print('positive_dist:{:.7f}, negative_dist:{:.7f}'.format(positive_sum, negative_sum))
 
     loss = lambda_loss*torch.sum(loss*valid_mask)/normalization
-    print("descriptor loss: {}".format(loss))
     return loss
 
 

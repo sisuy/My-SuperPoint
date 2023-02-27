@@ -50,14 +50,13 @@ def train(config,model,dataloader,optimizer,device='cpu'):
                 # step
                 optimizer.step()
 
-                # Save model
                 # save each 500 iter
                 if (i%500==0):
                     print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 500:.3f}')
 
                     # Save model
                     torch.save(model.state_dict(),PATH+".pth")
-                    print("Torch save: "+PATH+".pth")
+                    print("{}/{} - Torch save: ".format(i,len(dataloader['train']))+PATH+".pth")
 
                     losses.append(running_loss/500)
                     running_loss = 0.0
