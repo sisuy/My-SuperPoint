@@ -45,12 +45,11 @@ def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
     labels = torch.argmax(labels + torch.zeros(labels.shape,device=device).uniform_(0,0.1),dim=1)#B*)H/grid_size)*(W/grid_size)
 
     # generate valid_mask: [B,H,W] -> [B,H/8,/W/8]
-    if valid_mask is None:
-        valid_mask = torch.ones([B,H,W])
+    valid_mask = torch.ones_like(keypoint_map) if valid_mask is None else valid_mask
 
     valid_mask = valid_mask.unsqueeze(dim=1) # [B,1,H,W] 
     valid_mask =  pixel_shuffle_inv(valid_mask,grid_size) # [B,64,H/8,W/8]
-    valid_mask = torch.prod(valid_mask,dim=1).unsqueeze(dim=1) # [B,1,H/8,W/8]
+    valid_mask = torch.prod(valid_mask,dim=1).unsqueeze(dim=1).type(torch.float32) # [B,1,H/8,W/8]
 
     # use cross-entropy to get the loss
     # lossFunction = torch.nn.CrossEntropy(reduction='none')
@@ -82,16 +81,15 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
     positive_margin = config['loss']['positive_margin']
     negative_margin = config['loss']['negative_margin']
 
-    pixel_coord = torch.stack(torch.meshgrid(torch.arange(Hc,device=device),torch.arange(Wc,device=device)),dim=-1) # [30,40,2]
+    pixel_coord = torch.stack(torch.meshgrid([torch.arange(Hc,device=device),torch.arange(Wc,device=device)]),dim=-1) # [30,40,2]
 
     # compute the central pixel of the coord
     pixel_coord = pixel_coord*grid_size + grid_size//2
-    pixel_points = torch.reshape(pixel_coord,(-1,2))
 
-    warpedPixel_coord = warped_points(pixel_points,homography,device=device) # [N,2] if batch size==1, else [B,N,2]
+    warpedPixel_coord = warped_points(pixel_coord.reshape(-1,2),homography,device=device) # [N,2] if batch size==1, else [B,N,2]
 
     # reshape the coord tensor into the form like: [batch,Hc,Wc,1,1,2] and [batch,1,1,Hc,Wc,2]
-    pixel_coord = torch.reshape(pixel_coord,[B,1,1,Hc,Wc,2])
+    pixel_coord = torch.reshape(pixel_coord,[B,1,1,Hc,Wc,2]).type(torch.float32)
     warpedPixel_coord = torch.reshape(warpedPixel_coord,[B,Hc,Wc,1,1,2])
 
     # TODO: Calculate the L2 norm

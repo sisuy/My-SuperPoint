@@ -37,16 +37,15 @@ def warped_points(pixel_points,homography,device='cpu'):
     pixel_points = torch.fliplr(pixel_points)
     # Homogrous
     pixel_points = torch.cat([pixel_points,torch.ones([pixel_points.shape[0],1],device=device)],dim=1)
-    pixel_points = torch.transpose(pixel_points,1,0) # [3,N]
-
-    warped_points = torch.tensordot(homography,pixel_points,dims=[[2],[0]]) # [B,3,N]
+    warped_points = torch.tensordot(homography,pixel_points.transpose(1,0),dims=[[2],[0]]) # [B,3,N]
 
     # normalisze: homogrous -> 2D
-    warped_points = warped_points.transpose(1,2) # [B,N,3]
-    warped_points = warped_points[:,:,:2]/warped_points[:,:,2:] # [B,1200,2]
-
+    warped_points = warped_points.reshape([B,3,-1])
+    warped_points = warped_points.transpose(2,1)
+    warped_points = warped_points[:,:,:2]/warped_points[:,:,2:]
     warped_points = torch.flip(warped_points,dims=(2,))
     warped_points = warped_points.squeeze(dim=0)
+
     return warped_points
 
 
