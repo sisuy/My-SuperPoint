@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 from model.SuperPoint import SuperPointBNNet
 from torchviz import make_dot
 from dataset.coco import COCODataset
+from tqdm import tqdm
 import warnings
 from solver.loss import loss_fn
 warnings.filterwarnings("ignore")
@@ -16,54 +17,53 @@ def train(config,model,dataloader,optimizer,device='cpu'):
     epoch = config['epoch']
     # sava path
     PATH = os.path.join(config['save_dir'],config['model_name'])
-    print(PATH)
 
-    for epoch in range(epoch):
-        for i, data in enumerate(dataloader['train'],0):
-            # zero the parameter gradients
-            optimizer.zero_grad()
+    try:
+        for epoch in range(epoch):
+            model.train()
+            for i, data in tqdm(enumerate(dataloader['train'],0)):
+                # forward
+                raw_output = model(data['raw']['img'])
+                warp_output = model(data['warp']['img'])
 
-            # forward
-            raw_output = model(data['raw']['img'])
-            warp_output = model(data['warp']['img'])
+                prob,desc,prob_warp,desc_warp = raw_output['det_info'],\
+                                                raw_output['desc_info'],\
+                                                warp_output['det_info'],\
+                                                warp_output['desc_info']
+                # calculate loss
+                loss = loss_fn(config,
+                                 prob,desc,
+                                 prob_warp,
+                                 desc_warp,
+                                 data,
+                                 device=device)
 
-            prob,desc,prob_warp,desc_warp = raw_output['det_info'],\
-                                            raw_output['desc_info'],\
-                                            warp_output['det_info'],\
-                                            warp_output['desc_info']
-            # calculate loss
-            loss = loss_fn(config,
-                             prob,desc,
-                             prob_warp,
-                             desc_warp,
-                             data,
-                             device=device)
+                # add running_loss
+                running_loss += loss.item()
 
-            # add running_loss
-            running_loss += loss.item()
+                # zero the parameter gradients
+                model.zero_grad()
 
-            # backward
-            loss.backward()
+                # backward
+                loss.backward()
 
-            # step
-            optimizer.step()
-
-            # Save model
-            # save each 500 iter
-            if (i%500==0):
-                print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 500:.3f}')
+                # step
+                optimizer.step()
 
                 # Save model
-                torch.save(model.state_dict(),PATH+"_"+str(running_loss)+".pth")
-                print("Torch save: "+PATH+"_"+str(running_loss)+"_.pth")
+                # save each 500 iter
+                if (i%500==0):
+                    print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 500:.3f}')
 
-                losses.append(running_loss/500)
-                running_loss = 0.0
-            
+                    # Save model
+                    torch.save(model.state_dict(),PATH+".pth")
+                    print("Torch save: "+PATH+".pth")
 
-
-
-
+                    losses.append(running_loss/500)
+                    running_loss = 0.0
+    except KeyboardInterrupt:
+        torch.save(model.state_dict(),PATH+".pth")
+        print("Torch save: "+PATH+".pth")
 
 
 if __name__ == '__main__':

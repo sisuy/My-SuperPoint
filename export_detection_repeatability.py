@@ -14,7 +14,7 @@ if __name__=="__main__":
 
     # load dataset and generate dataloader
     dataset = PatchesDataset(config['data'],device=device)
-    dataloader = DataLoader(dataset,batch_size=1,shuffle=True,collate_fn=dataset.batch_collator)
+    dataloader = DataLoader(dataset,batch_size=1,shuffle=False,collate_fn=dataset.batch_collator)
 
     # load net
     net = SuperPointBNNet(config['model'],device=device)
@@ -31,6 +31,7 @@ if __name__=="__main__":
                     'warp_prob': prob2['det_info']['prob_nms'],
                     'homography': data['homography']}
        
+            pred.update(data)
             # to numpy files
             pred = {k:v.cpu().numpy().squeeze() for k,v in pred.items()}
             filename = str(i)

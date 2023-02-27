@@ -27,16 +27,15 @@ class DetectorHead(torch.nn.Module):
         # block1
         out = self.convPa(input)
         out = self.relu(out)
-        self.BNPa(out)
+        out = self.BNPa(out)
     
         # block2
         out = self.convPb(out)
-        out = self.relu(out)
-        prob_map = self.BNPb(out)
+        out = self.BNPb(out)
 
         # apply softmax function
+        prob_map = self.softmax(out)
         prob_map = prob_map[:,:-1,:,:]
-        prob_map = self.softmax(prob_map)
 
         prob_map =self.pixel_shuffle(prob_map) # output size: [B,1,240,320]
         prob_map = prob_map.squeeze(dim=1)
@@ -75,16 +74,15 @@ class DescriptorHead(torch.nn.Module):
 
         # Block2
         out = self.convDb(out)
-        out = self.relu(out)
-        desc_raw = self.BNDb(out)
+        out = self.BNDb(out)
 
         # Bicubic interpolation
-        desc = self.upSampler(desc_raw)
+        desc = self.upSampler(out)
 
         # L2-normalisation - Non-learned upsampling
         desc = torch.nn.functional.normalize(desc,p=2,dim=1) # why dim = 1?
         
-        return {'desc_raw': desc_raw,'desc':desc}
+        return {'desc_raw': out,'desc':desc}
 
 
 import yaml
