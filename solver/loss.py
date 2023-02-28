@@ -117,11 +117,11 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
     # TODO: why p=2? why not p = 1?
     dot_product_descriptor = torch.reshape(F.normalize(
                                             torch.reshape(dot_product_descriptor,[B,Hc,Wc,Hc*Wc]),
-                                            p=1,
+                                            p=2,
                                             dim=3),[B,Hc,Wc,Hc,Wc])
     dot_product_descriptor = torch.reshape(F.normalize(
                                             torch.reshape(dot_product_descriptor,[B,Hc*Wc,Hc,Wc]),
-                                            p=1,
+                                            p=2,
                                             dim=1),[B,Hc,Wc,Hc,Wc])
 
     positive_dist = torch.maximum(torch.tensor(0.,device=device),positive_margin-dot_product_descriptor)
