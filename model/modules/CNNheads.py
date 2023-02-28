@@ -77,8 +77,7 @@ class DescriptorHead(torch.nn.Module):
         out = self.BNDb(out)
 
         # Bicubic interpolation
-        # desc = self.upSampler(desc_raw)
-        desc = torch.nn.functional.interpolate(out, scale_factor=self.grid_size, mode='bilinear',align_corners=False)
+        desc = self.upSampler(out)
         # L2-normalisation - Non-learned upsampling
         desc = torch.nn.functional.normalize(desc,p=2,dim=1) # why dim = 1?
         

@@ -1,9 +1,9 @@
 import torch
 import warnings
-warnings.filterwarnings("ignore")
 import torch.nn.functional as F
 from model.modules.utils.tensor_op import pixel_shuffle,pixel_shuffle_inv
 from dataset.utils.solver import warped_points
+warnings.filterwarnings("ignore")
 
 def loss_fn(config,prob,desc,prob_warp,desc_warp,data,device='cpu'):
     detLoss1 = det_loss(data['raw']['kpts_map'],
@@ -37,8 +37,10 @@ def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
     '''
     labels = keypoint_map.unsqueeze(dim=1).float() # [1, 1, 240, 320]
 
+
     # pixel shuffle inverse 1 channels -> 64 channels
-    labels = pixel_shuffle_inv(labels,grid_size) # [1, 64, 30, 40]
+    pixelUnshuffler = torch.nn.PixelUnshuffle(downscale_factor=grid_size)
+    labels = pixelUnshuffler(labels) # [1, 64, 30, 40]
     B,C,H,W = labels.shape
 
     # add dusbin(torch.ones -> [1,1,30,40])
@@ -49,7 +51,7 @@ def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
     valid_mask = torch.ones_like(keypoint_map) if valid_mask is None else valid_mask
 
     valid_mask = valid_mask.unsqueeze(dim=1) # [B,1,H,W] 
-    valid_mask =  pixel_shuffle_inv(valid_mask,grid_size) # [B,64,H/8,W/8]
+    valid_mask =  pixelUnshuffler(valid_mask) # [B,64,H/8,W/8]
     valid_mask = torch.prod(valid_mask,dim=1).unsqueeze(dim=1).type(torch.float32) # [B,1,H/8,W/8]
     valid_mask = valid_mask.squeeze(dim=1) # [1,30,40]
 
@@ -115,11 +117,11 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
     # TODO: why p=2? why not p = 1?
     dot_product_descriptor = torch.reshape(F.normalize(
                                             torch.reshape(dot_product_descriptor,[B,Hc,Wc,Hc*Wc]),
-                                            p=2,
+                                            p=1,
                                             dim=3),[B,Hc,Wc,Hc,Wc])
     dot_product_descriptor = torch.reshape(F.normalize(
                                             torch.reshape(dot_product_descriptor,[B,Hc*Wc,Hc,Wc]),
-                                            p=2,
+                                            p=1,
                                             dim=1),[B,Hc,Wc,Hc,Wc])
 
     positive_dist = torch.maximum(torch.tensor(0.,device=device),positive_margin-dot_product_descriptor)
@@ -133,8 +135,8 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
     # reshape it by using unshuffle_pixle
     valid_mask = torch.unsqueeze(valid_mask,dim=1).type(torch.float32) # [B,1,H,W]
 
-    unshuffler = torch.nn.PixelUnshuffle(grid_size)
-    valid_mask = pixel_shuffle_inv(valid_mask,grid_size) # [B,C,Hc,Wc]
+    pixel_Unshuffler = torch.nn.PixelUnshuffle(downscale_factor=grid_size)
+    valid_mask = pixel_Unshuffler(valid_mask) # [B,C,Hc,Wc]
     valid_mask = torch.prod(valid_mask,dim=1) # [B,Hc,Wc]
     valid_mask = torch.reshape(valid_mask,[B,1,1,Hc,Wc])
 

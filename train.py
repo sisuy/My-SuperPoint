@@ -54,8 +54,7 @@ def train(config,model,dataloader,device='cpu'):
                 # step
                 optimizer.step()
 
-                # Save model
-                # save each 500 iter
+                # save model each 500 iter
                 if (i%500==0):
                     print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 500:.3f}')
 
