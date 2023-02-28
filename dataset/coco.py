@@ -152,7 +152,7 @@ class COCODataset(torch.utils.data.Dataset):
 # test dataset
 if __name__=="__main__":
     is_train = True
-    device = 'mps'
+    device = 'cuda:0'
     batch_size = 1
     config = {'name': 'coco',
               'resize': [240, 320],

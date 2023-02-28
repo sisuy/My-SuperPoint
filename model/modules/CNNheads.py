@@ -1,5 +1,5 @@
 import torch
-from model.modules.utils.tensor_op import pixel_shuffle
+from model.modules.utils.tensor_op import pixel_shuffle,pixel_shuffle_inv
 
 class DetectorHead(torch.nn.Module):
     def __init__(self,input_channel,grid_size,using_bn,device='cpu'):
@@ -74,11 +74,11 @@ class DescriptorHead(torch.nn.Module):
 
         # Block2
         out = self.convDb(out)
-        out = self.BNDb(out) # [B,256,H/8,W/8]
+        out = self.BNDb(out)
 
         # Bicubic interpolation
-        desc = self.upSampler(out)
-
+        # desc = self.upSampler(desc_raw)
+        desc = torch.nn.functional.interpolate(out, scale_factor=self.grid_size, mode='bilinear',align_corners=False)
         # L2-normalisation - Non-learned upsampling
         desc = torch.nn.functional.normalize(desc,p=2,dim=1) # why dim = 1?
         

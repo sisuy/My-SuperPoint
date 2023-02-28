@@ -5,7 +5,6 @@ class VGGBackbone(torch.nn.Module):
     def __init__(self,config,input_channel = 1, device = 'cpu'):
         super(VGGBackbone,self).__init__()
         self.device = device
-        print("VGG device = {}".format(self.device))
         channels = config['channels']
 
         self.block1_1 = torch.nn.Sequential(

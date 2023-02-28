@@ -9,19 +9,23 @@ from dataset.coco import COCODataset
 from tqdm import tqdm
 import warnings
 from solver.loss import loss_fn
+from tqdm import tqdm
 warnings.filterwarnings("ignore")
 
-def train(config,model,dataloader,optimizer,device='cpu'):
+def train(config,model,dataloader,device='cpu'):
+    # TODO: Load optimizer
+    optimizer = torch.optim.Adam(model.parameters(),
+                                  lr=config['base_lr'])
+                                  # betas=config['solver']['betas'])
     losses = []
     running_loss = 0.0
     epoch = config['epoch']
     # sava path
     PATH = os.path.join(config['save_dir'],config['model_name'])
-
     try:
         for epoch in range(epoch):
             model.train()
-            for i, data in tqdm(enumerate(dataloader['train'],0)):
+            for i, data in tqdm(enumerate(dataloader['train'])):
                 # forward
                 raw_output = model(data['raw']['img'])
                 warp_output = model(data['warp']['img'])
@@ -32,11 +36,11 @@ def train(config,model,dataloader,optimizer,device='cpu'):
                                                 warp_output['desc_info']
                 # calculate loss
                 loss = loss_fn(config,
-                                 prob,desc,
-                                 prob_warp,
-                                 desc_warp,
-                                 data,
-                                 device=device)
+                               prob,desc,
+                               prob_warp,
+                               desc_warp,
+                               data,
+                               device=device)
 
                 # add running_loss
                 running_loss += loss.item()
@@ -50,20 +54,21 @@ def train(config,model,dataloader,optimizer,device='cpu'):
                 # step
                 optimizer.step()
 
+                # Save model
                 # save each 500 iter
                 if (i%500==0):
                     print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 500:.3f}')
 
                     # Save model
+                    # torch.save(model.state_dict(),PATH+"_"+str(running_loss)+".pth")
+                    # print("Torch save: "+PATH+"_"+str(running_loss/500)+"_.pth")
                     torch.save(model.state_dict(),PATH+".pth")
-                    print("{}/{} - Torch save: ".format(i,len(dataloader['train']))+PATH+".pth")
+                    print("Torch save: "+PATH+".pth")
 
                     losses.append(running_loss/500)
                     running_loss = 0.0
     except KeyboardInterrupt:
-        torch.save(model.state_dict(),PATH+".pth")
-        print("Torch save: "+PATH+".pth")
-
+        torch.save(model.state_dict(),os.path.join(config['save_dir'],'keyboardInterrupt.pth'))
 
 if __name__ == '__main__':
     # solve enviroment problem
@@ -104,8 +109,4 @@ if __name__ == '__main__':
                                       shuffle=True,
                                       collate_fn=testset.batch_collator)}
 
-    # TODO: Load optimizer
-    optimizer = torch.optim.Adam(model.parameters(),
-                                  lr=config['solver']['base_lr'],
-                                  betas=config['solver']['betas'])
-    losses = train(config['solver'],model,dataloader,optimizer,device=device)
+    losses = train(config['solver'],model,dataloader,device=device)
