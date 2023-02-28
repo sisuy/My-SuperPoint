@@ -34,6 +34,7 @@ if __name__=="__main__":
 
             pred.update(data)
        
+            pred.update(data)
             # to numpy files
             pred = {k:v.cpu().numpy().squeeze() for k,v in pred.items()}
             filename = str(i)

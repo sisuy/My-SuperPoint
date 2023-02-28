@@ -31,15 +31,14 @@ class DetectorHead(torch.nn.Module):
     
         # block2
         out = self.convPb(out)
-        # out = self.relu(out)
         out = self.BNPb(out)
 
         # apply softmax function
         prob_map = self.softmax(out)
-        prob_map = prob_map[:,:-1,:,:]
+        prob_map = prob_map[:,:-1,:,:] # [B,grid_size*grid_size,H/grid_size,W/grid_size]
 
-        prob_map =pixel_shuffle(prob_map,self.grid_size) # output size: [B,1,240,320]
-        prob_map = prob_map.squeeze(dim=1)
+        prob_map =self.pixel_shuffle(prob_map) # output size: [B,1,H,W]
+        prob_map = prob_map.squeeze(dim=1) # [B,H,W]
 
         # we need pixel shuffle to up-sample
         return {'logit':out,'prob':prob_map}

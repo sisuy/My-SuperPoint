@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 from model.SuperPoint import SuperPointBNNet
 from torchviz import make_dot
 from dataset.coco import COCODataset
+from tqdm import tqdm
 import warnings
 from solver.loss import loss_fn
 from tqdm import tqdm
@@ -21,7 +22,6 @@ def train(config,model,dataloader,device='cpu'):
     epoch = config['epoch']
     # sava path
     PATH = os.path.join(config['save_dir'],config['model_name'])
-    
     try:
         for epoch in range(epoch):
             model.train()
@@ -69,11 +69,6 @@ def train(config,model,dataloader,device='cpu'):
                     running_loss = 0.0
     except KeyboardInterrupt:
         torch.save(model.state_dict(),os.path.join(config['save_dir'],'keyboardInterrupt.pth'))
-
-
-
-
-
 
 if __name__ == '__main__':
     # solve enviroment problem

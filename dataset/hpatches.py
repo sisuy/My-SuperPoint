@@ -148,12 +148,12 @@ if __name__=="__main__":
     PATH = './config/detection_repeatability.yaml'
     with open(PATH,'r') as file:
         config = yaml.safe_load(file)
-    device = 'cuda:0'
+    device = 'mps'
     dataset = PatchesDataset(config['data'],device=device)
     dataloader = DataLoader(dataset,batch_size=1,shuffle=True,collate_fn=dataset.batch_collator)
 
     for i,data in enumerate(dataloader):
-        if i >= 3:
+        if i <= 3:
             img = (data['img']*255).squeeze().cpu().numpy().astype(np.int).astype(np.uint8)
             warped_img = (data['warped_img']*255).squeeze().cpu().numpy().astype(np.int).astype(np.uint8)
 

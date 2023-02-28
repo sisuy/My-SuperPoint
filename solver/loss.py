@@ -26,6 +26,7 @@ def loss_fn(config,prob,desc,prob_warp,desc_warp,data,device='cpu'):
     loss = detLoss1 + detLoss2 + weighted_desc_loss
     print("loss:{:.3f} = {:.3f} + {:.3f} + {:.3f}".format(loss.item(),detLoss1.item(),detLoss2.item(),weighted_desc_loss.item()))
     return loss
+
 def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
     '''
     Parameters:
@@ -51,7 +52,6 @@ def det_loss(keypoint_map,logits,grid_size,valid_mask,device):
     valid_mask =  pixel_shuffle_inv(valid_mask,grid_size) # [B,64,H/8,W/8]
     valid_mask = torch.prod(valid_mask,dim=1).unsqueeze(dim=1).type(torch.float32) # [B,1,H/8,W/8]
     valid_mask = valid_mask.squeeze(dim=1) # [1,30,40]
-
 
     # use cross-entropy to get the loss
     loss = torch.nn.functional.cross_entropy(logits,labels,reduction='mean')
@@ -108,7 +108,7 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
 
 
     dot_product_descriptor = torch.sum(descriptor*warped_descriptor,dim=1)
-    dot_product_descriptor = F.relu(dot_product_descriptor) # [B,Hc,Wc,Hc,Wc]
+    # dot_product_descriptor = F.relu(dot_product_descriptor) # [B,Hc,Wc,Hc,Wc]
 
     # TODO: Maybe wrong here
     # use L2 norm to get average 1/(Hc*Wc)^2
@@ -136,6 +136,7 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
     unshuffler = torch.nn.PixelUnshuffle(grid_size)
     valid_mask = pixel_shuffle_inv(valid_mask,grid_size) # [B,C,Hc,Wc]
     valid_mask = torch.prod(valid_mask,dim=1) # [B,Hc,Wc]
+    valid_mask = torch.reshape(valid_mask,[B,1,1,Hc,Wc])
 
     # copy debug from https://github.com/shaofengzeng/SuperPoint-Pytorch/blob/master/solver/loss.py
     normalization = torch.sum(valid_mask)*(Hc*Wc)
@@ -147,7 +148,6 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
 
     loss = lambda_loss*torch.sum(valid_mask*loss)/normalization
     return torch.sum(loss)
-
 
 # test
 if __name__=='__main__':
