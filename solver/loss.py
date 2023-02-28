@@ -89,7 +89,7 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
     warpedPixel_coord = warped_points(pixel_coord.reshape(-1,2),homography,device=device) # [N,2] if batch size==1, else [B,N,2]
 
     # reshape the coord tensor into the form like: [batch,Hc,Wc,1,1,2] and [batch,1,1,Hc,Wc,2]
-    pixel_coord = torch.reshape(pixel_coord,[B,1,1,Hc,Wc,2]).type(torch.float32)
+    pixel_coord = torch.reshape(pixel_coord,[1,1,1,Hc,Wc,2]).type(torch.float32)
     warpedPixel_coord = torch.reshape(warpedPixel_coord,[B,Hc,Wc,1,1,2])
 
     # TODO: Calculate the L2 norm
@@ -145,8 +145,7 @@ def desc_loss(config,descriptor,warped_descriptor,homography,valid_mask=None,dev
 
     print('positive_dist:{:.7f}, negative_dist:{:.7f}'.format(positive_sum, negative_sum))
 
-    loss = lambda_loss*torch.sum(loss*valid_mask)/normalization
-    print("descriptor loss: {}".format(loss))
+    loss = lambda_loss*torch.sum(valid_mask*loss)/normalization
     return torch.sum(loss)
 
 

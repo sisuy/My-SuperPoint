@@ -110,14 +110,14 @@ class PatchesDataset(torch.utils.data.Dataset):
         up_scale = np.diag([1./s,1./s,1])
 
         warped_s = np.max(target_size/source_warped_size)
-        down_scale = np.diag([1./warped_s,1./warped_s,1])
+        down_scale = np.diag([warped_s,warped_s,1])
 
         pad_y,pad_x = (source_size*s - target_size)//2.0
         translation = np.array([[1,0,pad_x],
                                 [0,1,pad_y],
                                 [0,0,1]],dtype=np.float32)
 
-        pad_y,pad_x = (source_warped_size*s - target_size)//2.0
+        pad_y,pad_x = (source_warped_size*warped_s - target_size)//2.0
         warped_translation = np.array([[1,0,-pad_x],
                                        [0,1,-pad_y],
                                        [0,0,1]],dtype=np.float32)
