@@ -11,7 +11,12 @@ if __name__=="__main__":
     PATH = './config/detection_repeatability.yaml'
     with open(PATH,'r') as file:
         config = yaml.safe_load(file)
-    device = 'cuda:0'
+    device = 'cpu'
+
+    if not os.path.exists(config['data']['export_dir']):
+        print("Not exists {}".format(config['data']['export_dir']))
+        os.makedirs(config['data']['export_dir'])
+        print("Create export directory")
 
     # load dataset and generate dataloader
     dataset = PatchesDataset(config['data'],device=device)
@@ -33,11 +38,11 @@ if __name__=="__main__":
                     'homography': data['homography']}
 
             pred.update(data)
-       
-            pred.update(data)
             # to numpy files
             pred = {k:v.cpu().numpy().squeeze() for k,v in pred.items()}
             filename = str(i)
             filepath = os.path.join(config['data']['export_dir'],'{}.npz'.format(filename))
             print("export file({}/{}): {}".format(i+1,len(dataloader),filepath))
             np.savez_compressed(filepath,**pred)
+
+    print("Done")
