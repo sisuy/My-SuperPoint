@@ -11,7 +11,7 @@ if __name__=="__main__":
     PATH = './config/detection_repeatability.yaml'
     with open(PATH,'r') as file:
         config = yaml.safe_load(file)
-    device = 'cpu'
+    device = 'cuda:0'
 
     if not os.path.exists(config['data']['export_dir']):
         print("Not exists {}".format(config['data']['export_dir']))
