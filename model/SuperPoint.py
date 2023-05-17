@@ -5,6 +5,7 @@ import yaml
 from model.modules.VGGBackbone import VGGBackbone
 from model.modules.CNNheads import DetectorHead,DescriptorHead
 from model.solver import box_nms
+from thop import profile
 # mainly copy from https://github.com/shaofengzeng/SuperPoint-Pytorch
 
 class SuperPointBNNet(torch.nn.Module):
@@ -61,16 +62,20 @@ class SuperPointBNNet(torch.nn.Module):
 
 
 
+# move this file to main foler, before run it
 if __name__=='__main__':
     PATH = ''
 
-    with open('./config/superpoint_COCO_train.yaml','r') as file:
+    with open('./config/superpoint_train.yaml','r') as file:
         config = yaml.safe_load(file)
-    net = SuperPointBNNet(config['model'],input_channel=1,grid_size = 8,device = 'mps', using_bn = True)
-    tensor = torch.randint(0,255,[1,1,240,320],dtype=torch.float32)
+    net = SuperPointBNNet(config['model'],input_channel=1,grid_size = 8,device = 'cuda:0', using_bn = True)
+    tensor = torch.randint(0,255,[1,1,240,320],dtype=torch.float32,device="cuda:0")
 
     out = net(tensor) 
     print('intput shape: {}'.format(tensor.shape))
     print("detection output: {} \ndescriptor output: {}"\
             .format(out['det_info']['prob'].shape,out['desc_info']['desc'].shape))
+    flops, params = profile(net, inputs=(tensor,))
+    print(f"FLOPs = {flops/1000**3} G\nParams = {params/1000**2} M")
+
     print('done')
